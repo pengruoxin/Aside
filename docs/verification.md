@@ -8,7 +8,9 @@
 - [原生界面与 DMG 构建](https://github.com/pengruoxin/Aside/actions/runs/40468132288)：Apple Silicon / Intel 均通过 10 个测试、原生启动、NSTextView 编辑撤销、图标生成、签名校验、DMG 校验。
 - [服务协议与界面修正](https://github.com/pengruoxin/Aside/actions/runs/40468640682)：两种架构各 14 个测试通过，生成实际原生截图和 DMG。网络测试使用 URLProtocol 模拟，不调用真实付费服务。
 
-新增手动 / 自动来源隔离的回归测试及长内容滚动修正，将在后续构建与版本标签工作流中再次验证。最终结果以 [Actions](https://github.com/pengruoxin/Aside/actions) 和 Release 关联标签为准。
+- [v0.2.0 发布验证](https://github.com/pengruoxin/Aside/actions/runs/40469762051)：Apple Silicon / Intel 各 15 个测试零失败，原生启动、编辑撤销、DMG 校验及 Release 发布全部通过。
+- 已从公开 Release 下载两份 DMG，并核对 SHA-256 与发布的校验文件一致。
+- [安装包下载](https://github.com/pengruoxin/Aside/releases/tag/v0.2.0)。
 
 ## 审阅后处理
 
