@@ -64,7 +64,7 @@ public enum WritingError: LocalizedError {
         switch self {
         case .invalidSource: return "请输入一段中文或英文，最多 2000 字。"
         case .invalidResult: return "模型返回格式不符合要求，请重试或换一个模型。"
-        case .modelMissing: return "请先在设置中填写本机 Ollama 已安装的模型名。"
+        case .modelMissing: return "请先在翻译服务设置中填写可用的模型名。"
         case .serviceUnavailable: return "无法连接本机 Ollama，请确认服务已启动，模型已安装。"
         case .serverFailure(let status): return "本机翻译服务返回错误（\(status)），请检查模型名和服务状态。"
         }

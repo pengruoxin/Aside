@@ -1,12 +1,14 @@
 import Foundation
-import AsideCore
 
-struct ServiceConfiguration {
-    let backend: String
-    let model: String
-    let baseURL: String
-    let key: String
-    let consent: Bool
+public struct ServiceConfiguration {
+    public let backend: String
+    public let model: String
+    public let baseURL: String
+    public let key: String
+    public let consent: Bool
+    public init(backend: String, model: String, baseURL: String, key: String, consent: Bool) {
+        self.backend = backend; self.model = model; self.baseURL = baseURL; self.key = key; self.consent = consent
+    }
 }
 
 private final class NoRedirects: NSObject, URLSessionTaskDelegate {
@@ -16,7 +18,9 @@ private final class NoRedirects: NSObject, URLSessionTaskDelegate {
     }
 }
 
-struct WritingService {
+public struct WritingService {
+    private let sessionConfiguration: URLSessionConfiguration
+    public init(sessionConfiguration: URLSessionConfiguration = .ephemeral) { self.sessionConfiguration = sessionConfiguration }
     private struct Message: Encodable { let role: String; let content: String }
     private struct ChatPayload: Encodable {
         let model: String
@@ -35,7 +39,7 @@ struct WritingService {
         let choices: [Choice]
     }
 
-    func generate(_ writing: WritingRequest, configuration: ServiceConfiguration) async throws -> WritingResult {
+    public func generate(_ writing: WritingRequest, configuration: ServiceConfiguration) async throws -> WritingResult {
         guard !configuration.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw WritingError.modelMissing }
         guard !writing.source.isEmpty, writing.source.count <= SentencePolicy.limit,
               SentencePolicy.language(of: writing.source) != .undetermined else { throw WritingError.invalidSource }
@@ -55,7 +59,7 @@ struct WritingService {
         request.httpMethod = "POST"
         request.timeoutInterval = 90
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let settings = URLSessionConfiguration.ephemeral
+        let settings = sessionConfiguration.copy() as! URLSessionConfiguration
         settings.urlCache = nil
         settings.httpCookieStorage = nil
         let session = URLSession(configuration: settings, delegate: NoRedirects(), delegateQueue: nil)
@@ -76,10 +80,10 @@ struct WritingService {
         return try WritingResult.parseJSON(text)
     }
 
-    func localModels() async throws -> [String] {
+    public func localModels() async throws -> [String] {
         var request = URLRequest(url: URL(string: "http://localhost:11434/api/tags")!)
         request.timeoutInterval = 5
-        let session = URLSession(configuration: .ephemeral, delegate: NoRedirects(), delegateQueue: nil)
+        let session = URLSession(configuration: sessionConfiguration, delegate: NoRedirects(), delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode), data.count <= 1_000_000 else {

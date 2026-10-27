@@ -39,6 +39,7 @@ struct WritingView: View {
     @ObservedObject var assistant: AssistantModel
     @ObservedObject var preferences: Preferences
     @Environment(\.openWindow) private var openWindow
+    @State private var editorHeight: CGFloat = 54
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -60,11 +61,11 @@ struct WritingView: View {
                 ForEach(ExpressionStyle.allCases, id: \.self) { Text($0.title).tag($0) }
             }.pickerStyle(.segmented).frame(width: 230)
             VStack(alignment: .leading, spacing: 0) {
-                NativeEditor(text: $assistant.draft, edited: { marked in
+                NativeEditor(text: $assistant.draft, height: $editorHeight, edited: { marked in
                     assistant.composing = marked
                     assistant.draftChanged()
                 })
-                    .frame(minHeight: 110, idealHeight: 150)
+                    .frame(height: editorHeight)
                 if !assistant.isExternal {
                     ResultView(assistant: assistant, preferences: preferences, inline: true)
                         .padding(.horizontal, 14).padding(.bottom, assistant.result == nil ? 0 : 14)

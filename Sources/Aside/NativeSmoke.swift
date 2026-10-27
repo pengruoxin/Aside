@@ -26,7 +26,9 @@ import AsideCore
         editor.textStorage?.replaceCharacters(in: range, with: replacement)
         editor.didChangeText()
         guard editor.string == replacement else { throw SmokeError.editFailed }
+        try await Task.sleep(nanoseconds: 200_000_000)
         editor.undoManager?.undo()
+        try await Task.sleep(nanoseconds: 200_000_000)
         guard editor.string == old else { throw SmokeError.undoFailed }
         editorWindow.close()
         let settings = makeWindow(PreferencesView(preferences: assistant.preferences, assistant: assistant), size: NSSize(width: 640, height: 690))
@@ -43,13 +45,19 @@ import AsideCore
     private static func makeWindow<V: View>(_ view: V, size: NSSize) -> NSWindow {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: view)
+        window.contentView = NSHostingView(rootView: view.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(nsColor: .windowBackgroundColor)))
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         return window
     }
     private static func capture(_ window: NSWindow, to path: String) throws {
+        let screenshot = Process()
+        screenshot.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        screenshot.arguments = ["-x", "-o", "-l", String(window.windowNumber), path]
+        try screenshot.run()
+        screenshot.waitUntilExit()
+        if screenshot.terminationStatus == 0, FileManager.default.fileExists(atPath: path) { return }
         guard let view = window.contentView else { throw SmokeError.captureFailed }
         view.layoutSubtreeIfNeeded()
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw SmokeError.captureFailed }

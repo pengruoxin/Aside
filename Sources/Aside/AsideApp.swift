@@ -58,5 +58,8 @@ import AppKit
         Window("句外偏好设置", id: "preferences") {
             PreferencesView(preferences: assistant.preferences, assistant: assistant)
         }.defaultSize(width: 570, height: 680)
+        Settings {
+            PreferencesView(preferences: assistant.preferences, assistant: assistant)
+        }
     }
 }
