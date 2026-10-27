@@ -2,9 +2,35 @@ import SwiftUI
 import AppKit
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var welcomeWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
+        if CommandLine.arguments.contains("--ui-smoke-test") {
+            Task { @MainActor in
+                do {
+                    try await NativeSmoke.run()
+                    NSApp.terminate(nil)
+                } catch {
+                    fputs("Native smoke failed: \(error)\n", stderr)
+                    exit(1)
+                }
+            }
+        } else if !UserDefaults.standard.bool(forKey: "hasSeenWelcome") {
+            let assistant = AssistantModel.shared
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 680),
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "欢迎使用句外 Aside"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: WelcomeView(assistant: assistant, preferences: assistant.preferences, finish: { [weak self] in
+                UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+                self?.welcomeWindow?.close()
+            }))
+            welcomeWindow = window
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     @objc func processSelection(_ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {

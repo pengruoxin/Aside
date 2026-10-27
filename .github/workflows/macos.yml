@@ -18,9 +18,20 @@ jobs:
         run: swift --version
       - name: Unit tests and app bundle
         run: bash scripts/build-macos.sh
+      - name: Native UI and undo smoke test
+        run: |
+          mkdir -p dist/ui
+          ASIDE_SMOKE_DIR="$PWD/dist/ui" dist/Aside.app/Contents/MacOS/Aside --ui-smoke-test
+        timeout-minutes: 2
+      - name: Build and verify DMG
+        run: bash scripts/package-dmg.sh
       - name: Package app preserving permissions
         run: ditto -c -k --sequesterRsrc --keepParent dist/Aside.app dist/Aside-${{ runner.arch }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Aside-${{ runner.arch }}
-          path: dist/Aside-*.zip
+          path: |
+            dist/Aside-*.zip
+            dist/Aside-*.dmg
+            dist/Aside-*.sha256
+            dist/ui/

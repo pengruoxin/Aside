@@ -24,6 +24,7 @@ struct ResultView: View {
                     Text(result.explanation).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                     HStack {
                         Button("复制英文") { assistant.copyResult() }
+                        Button("收藏") { assistant.saveResult() }
                         if inline && !assistant.isExternal && preferences.outputMode {
                             Button("替换原句") { assistant.replaceDraft() }
                         }
@@ -37,15 +38,27 @@ struct ResultView: View {
 struct WritingView: View {
     @ObservedObject var assistant: AssistantModel
     @ObservedObject var preferences: Preferences
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
+                BrandMark()
                 Text("句外 Aside").font(.title2.weight(.semibold))
                 Spacer()
                 Text(preferences.style.title).font(.caption).foregroundStyle(.secondary)
             }
             Text("中文照常写，英文顺手学。").foregroundStyle(.secondary)
+            if preferences.needsSetup {
+                HStack {
+                    Label("先连接你的翻译服务", systemImage: "wand.and.stars")
+                    Spacer()
+                    Button("去设置") { openWindow(id: "preferences") }
+                }.padding(12).background(AsideTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+            }
+            Picker("英文风格", selection: $preferences.style) {
+                ForEach(ExpressionStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.pickerStyle(.segmented).frame(width: 230)
             VStack(alignment: .leading, spacing: 0) {
                 NativeEditor(text: $assistant.draft, edited: { marked in
                     assistant.composing = marked
@@ -64,6 +77,7 @@ struct WritingView: View {
                 if assistant.busy { ProgressView().controlSize(.small) }
                 Text(assistant.message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Spacer()
+                if !assistant.draft.isEmpty { Button("清空") { assistant.clearContent() } }
                 Button("处理整段") { assistant.processDraft() }.disabled(preferences.paused || assistant.busy)
             }
             if assistant.isExternal {
@@ -76,7 +90,7 @@ struct WritingView: View {
             Text("使用系统拼音与 ABC；支持你的现有输入源切换设置。此处英文提示不属于可输入正文。")
                 .font(.caption).foregroundStyle(.tertiary)
         }
-        .padding(24).frame(minWidth: 500, minHeight: 380)
+        .padding(26).frame(minWidth: 550, minHeight: 470).tint(AsideTheme.accent)
     }
 }
 
@@ -103,48 +117,6 @@ struct MenuContent: View {
             Text("也可使用原应用菜单：服务 → 使用句外处理。\n不会修改中文候选词和系统切换键。")
                 .font(.caption).foregroundStyle(.secondary)
             Button("退出句外") { NSApp.terminate(nil) }
-        }.padding(18).frame(width: 350)
-    }
-}
-
-struct PreferencesView: View {
-    @ObservedObject var preferences: Preferences
-    @ObservedObject var assistant: AssistantModel
-    @State private var permissionMessage = ""
-
-    var body: some View {
-        Form {
-            Section("表达") {
-                Picker("英文风格", selection: $preferences.style) {
-                    ForEach(ExpressionStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                Toggle("英文输出（允许替换句外编辑区）", isOn: $preferences.outputMode)
-                Toggle("默认展开中文讲解", isOn: $preferences.showExplanation)
-                Text("中文输入：翻译成英文。英文输入：改写英文。均附中文讲解。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("本机翻译服务") {
-                TextField("Ollama 模型名", text: $preferences.model, prompt: Text("填写已安装的模型名"))
-                Text("连接 localhost:11434。需自行安装 Ollama 和支持中英双语的模型；当前版本不发送至公网。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("其他应用 · 实验性") {
-                Toggle("自动检测完整内容（仅备忘录 / 文本编辑）", isOn: $preferences.automatic)
-                Text("开启后，获得辅助功能授权时会读取当前支持文本框的内容，最多 2000 字；句末停稳后交给本机模型。无法可靠判断所有拼音组合状态，建议先使用手动选区。每次启动默认关闭。")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button("检查 / 请求辅助功能权限") {
-                    assistant.accessibility.requestPermission()
-                    permissionMessage = assistant.accessibility.trusted ? "辅助功能已授权。" : "请在系统设置 → 隐私与安全性 → 辅助功能中授权句外。"
-                }
-                if !permissionMessage.isEmpty { Text(permissionMessage).font(.caption) }
-                Text("手动使用“服务 → 使用句外处理”无需全局键盘监听。跨应用只提供复制，不自动替换或发送。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("输入与隐私") {
-                Text("直接沿用苹果拼音和 ABC。输入源切换由 macOS 管理，句外不拦截 Caps Lock、地球键、Control–空格或候选词按键。")
-                Text("不保存输入历史；原文和结果仅留在运行内存，更新或退出时清除。API 不记录正文日志。输入法的个人词库仍由系统管理。")
-            }.font(.caption)
-        }
-        .formStyle(.grouped).padding(10).frame(minWidth: 530, minHeight: 620)
+        }.padding(18).frame(width: 370).tint(AsideTheme.accent)
     }
 }

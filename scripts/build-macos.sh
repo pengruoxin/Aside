@@ -12,6 +12,8 @@ app_dir="$PWD/dist/Aside.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 cp "$bin_dir/Aside" "$app_dir/Contents/MacOS/Aside"
 cp Resources/Info.plist "$app_dir/Contents/Info.plist"
+swift scripts/make-icon.swift dist
+iconutil --convert icns dist/Aside.iconset --output "$app_dir/Contents/Resources/Aside.icns"
 plutil -lint "$app_dir/Contents/Info.plist"
 # Ad-hoc signature for local development, not Developer ID signing/notarization.
 codesign --force --sign - "$app_dir"

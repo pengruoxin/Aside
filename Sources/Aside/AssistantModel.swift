@@ -13,6 +13,7 @@ import AsideCore
     @Published var message = "中文翻译，英文改写。保留苹果拼音与 ABC。"
     @Published var isExternal = false
     @Published var explanationExpanded = false
+    @Published var saved = SavedExpression.load()
     var composing = false
     private var generation: Task<Void, Never>?
     private var polling: AnyCancellable?
@@ -53,7 +54,7 @@ import AsideCore
     func draftChanged() {
         invalidate()
         isExternal = false
-        guard !preferences.paused, !composing, let source = SentencePolicy.completed(draft) else { return }
+        guard !preferences.paused, preferences.autoDraft, !composing, let source = SentencePolicy.completed(draft) else { return }
         generate(source: source, external: false, debounce: true)
     }
 
@@ -84,14 +85,14 @@ import AsideCore
         isExternal = external
         let token = version
         let style = preferences.style
-        let model = preferences.model
+        let configuration = serviceConfiguration()
         busy = true
         message = external ? "正在处理选中的文字…" : "正在生成英文表达…"
         generation = Task { [weak self] in
             do {
                 if debounce { try await Task.sleep(nanoseconds: 900_000_000) }
                 try Task.checkCancellation()
-                let output = try await LocalWritingService().generate(WritingRequest(source: source, style: style), model: model)
+                let output = try await WritingService().generate(WritingRequest(source: source, style: style), configuration: configuration)
                 try Task.checkCancellation()
                 guard let self, self.version == token else { return }
                 self.result = output
@@ -112,6 +113,34 @@ import AsideCore
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(result.expression, forType: .string)
         message = "已复制英文，请在原应用中自行粘贴。"
+    }
+
+    func serviceConfiguration() -> ServiceConfiguration {
+        ServiceConfiguration(backend: preferences.backend,
+                             model: preferences.backend == "cloud" ? preferences.cloudModel : preferences.model,
+                             baseURL: preferences.baseURL,
+                             key: preferences.backend == "cloud" ? (KeychainStore.load(endpoint: preferences.baseURL) ?? "") : "",
+                             consent: preferences.cloudConsent)
+    }
+
+    func saveResult() {
+        guard let result else { return }
+        guard !saved.contains(where: { $0.source == resultSource && $0.expression == result.expression }) else { message = "这句已经收藏了。"; return }
+        guard saved.count < 500 else { message = "已达到 500 条收藏，请先整理收藏。"; return }
+        saved.insert(SavedExpression(source: resultSource, expression: result.expression, explanation: result.explanation, style: preferences.style), at: 0)
+        SavedExpression.persist(saved)
+        message = "已收藏，可在偏好设置的“收藏”中回看。"
+    }
+
+    func removeSaved(_ id: UUID) {
+        saved.removeAll { $0.id == id }
+        SavedExpression.persist(saved)
+    }
+
+    func clearContent() {
+        draft = ""
+        invalidate()
+        message = "已清除当前文字与结果。"
     }
 
     func replaceDraft() {
