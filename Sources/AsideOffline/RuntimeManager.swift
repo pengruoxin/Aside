@@ -50,7 +50,8 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
                                "--parallel", "1", "--threads", "4", "--n-gpu-layers", "99", "--no-webui"]
             child.environment = ["PATH": "/usr/bin:/bin", "HOME": NSHomeDirectory(), "LLAMA_API_KEY": key]
             child.standardOutput = FileHandle.nullDevice
-            child.standardError = FileHandle.nullDevice
+            // Diagnostics are restricted to the fixed CI fixtures, never user input.
+            child.standardError = CommandLine.arguments.contains("--offline-smoke-test") ? FileHandle.standardError : FileHandle.nullDevice
             try child.run()
             self.process = child
             let session = URLSession(configuration: .ephemeral, delegate: RejectRedirects(), delegateQueue: nil)
@@ -86,12 +87,12 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
         try Task.checkCancellation()
         var request = URLRequest(url: try OfflineEndpoint.completion(port: port))
         request.httpMethod = "POST"
-        request.timeoutInterval = 90
+        request.timeoutInterval = 180
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
         let payload: [String: Any] = [
             "messages": [["role": "system", "content": writing.systemPrompt], ["role": "user", "content": writing.source]],
-            "stream": false, "temperature": 0.2, "max_tokens": 1024, "response_format": ["type": "json_object"]
+            "stream": false, "temperature": 0.2, "max_tokens": min(1024, max(256, writing.source.count * 2 + 128)), "response_format": ["type": "json_object"]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let config = URLSessionConfiguration.ephemeral

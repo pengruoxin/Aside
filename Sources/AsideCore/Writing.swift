@@ -44,6 +44,7 @@ public struct WritingRequest {
         严格只返回一个 JSON 对象，只有 expression 和 explanation 两个字符串字段。
         expression 必须是英文表达，不附中文原文；explanation 必须用简体中文解释一个值得学习的表达。
         讲解点明当前风格与另一种风格的用词或语气差异，但不再给第二个完整译文。
+        explanation 只写一至两句中文，最多80个汉字，不逐词罗列。
         Explain in Simplified Chinese, never an English-only explanation.
         原文“我们可以先试一下。”在当前目标风格下的正确示例：\(example)
         """
