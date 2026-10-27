@@ -1,40 +1,51 @@
-name: Native macOS build
+name: Native input method
 on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_offline:
+        description: Include the pinned model and test real offline inference
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      ASIDE_INCLUDE_MODEL: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.full_offline == true) && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Show toolchain
-        run: swift --version
-      - name: Unit tests and app bundle
-        run: bash scripts/build-macos.sh
-      - name: Native UI and undo smoke test
-        run: |
-          mkdir -p dist/ui
-          ASIDE_SMOKE_DIR="$PWD/dist/ui" dist/Aside.app/Contents/MacOS/Aside --ui-smoke-test
-        timeout-minutes: 2
-      - name: Build and verify DMG
+      - name: Install build-only Pinyin dependency
+        run: brew install librime
+      - uses: actions/cache@v4
+        with:
+          path: .build-deps/llama
+          key: llama-v0.7.0-macos26-arm64-static-1
+      - uses: actions/cache@v4
+        if: env.ASIDE_INCLUDE_MODEL == '1'
+        with:
+          path: .build-deps/models
+          key: qwen25-15b-6a1a2eb6
+      - name: Build and test actual input method
+        run: bash scripts/build-ime.sh
+      - name: Package complete offline installer
+        if: env.ASIDE_INCLUDE_MODEL == '1'
         run: bash scripts/package-dmg.sh
-      - name: Package app preserving permissions
-        run: ditto -c -k --sequesterRsrc --keepParent dist/Aside.app dist/Aside-${{ runner.arch }}.zip
+      - name: Build record
+        run: |
+          swift --version > dist/build-status.txt
+          echo "InputMethodKit / Rime / offline runtime; no independent editor." >> dist/build-status.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: Aside-${{ runner.arch }}
+          name: AsideInputMethod-ARM64
           path: |
-            dist/Aside-*.zip
-            dist/Aside-*.dmg
-            dist/Aside-*.sha256
-            dist/ui/
+            dist/*.dmg
+            dist/*.sha256
+            dist/build-status.txt
+            dist/smoke/
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
@@ -45,18 +56,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: Aside-*
+          name: AsideInputMethod-ARM64
           path: release-files
-          merge-multiple: true
-      - name: Publish preview release
+      - name: Publish offline input method
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          test "$(find release-files -name '*.dmg' | wc -l)" -eq 2
+          test "$(find release-files -name '*.dmg' | wc -l)" -eq 1
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 release-files/*.zip --clobber
+            gh release upload "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 --clobber
           else
-            gh release create "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 release-files/*.zip \
-              --title "句外 Aside $GITHUB_REF_NAME · Mac 预览版" \
-              --notes-file docs/release-notes.md --prerelease
+            gh release create "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 \
+              --title "句外输入法 $GITHUB_REF_NAME · 完整离线测试版" \
+              --notes-file docs/ime-release-notes.md --prerelease
           fi

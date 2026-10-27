@@ -5,4 +5,5 @@ dist/
 *.xcuserstate
 .env
 .env.*
+.build-deps/
 *.log
