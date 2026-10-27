@@ -55,7 +55,7 @@ import AsideCore
         for field in ["search", "chat"] {
             _ = try await web.evaluateJavaScript("document.getElementById('\(field)').focus()")
             try await Task.sleep(nanoseconds: 300_000_000)
-            guard let client = window.firstResponder?.inputContext?.client else { throw Failure.noTextClient }
+            guard let client = (window.firstResponder as? NSView)?.inputContext?.client else { throw Failure.noTextClient }
             var state = SentenceComposition()
             state.append("我们可以先试一下。")
             _ = state.acceptPreview(try .validated(expression: "We could try it first.", explanation: "先尝试。"), revision: state.revision)
