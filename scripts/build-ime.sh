@@ -74,7 +74,12 @@ EOF
 codesign --force --sign - "$harness"
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
-"$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"
+if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
+  xcrun lldb --batch \
+    -o "run --live \"$HOME/Library/Input Methods/Aside.app\"" \
+    -o "thread backtrace all" -- "$harness/Contents/MacOS/AsideHostHarness" || true
+  exit 1
+fi
 installer="$PWD/dist/安装句外.app"
 mkdir -p "$installer/Contents/MacOS" "$installer/Contents/Resources"
 cp "$bin/AsideInstaller" "$installer/Contents/MacOS/"
