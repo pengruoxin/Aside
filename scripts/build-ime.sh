@@ -76,6 +76,23 @@ codesign --force --sign - "$harness"
 stat -f 'CI console user: %Su' /dev/console
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
+control="$HOME/Library/Input Methods/AsideControl.app"
+ditto "$ime" "$control"
+python3 - "$control/Contents/Info.plist" <<'PY'
+import plistlib, sys
+path = sys.argv[1]
+with open(path, 'rb') as f:
+    info = plistlib.load(f)
+info.pop('ComponentInputModeDict', None)
+identifier = 'io.github.pengruoxin.inputmethod.AsideControl'
+info.update(CFBundleIdentifier=identifier, TISInputSourceID=identifier,
+            InputMethodConnectionName=identifier + '_Connection', TISIntendedLanguage='zh-Hans',
+            tsInputMethodCharacterRepertoireKey=['Hans'], tsInputMethodIconFileKey='Aside.icns')
+with open(path, 'wb') as f:
+    plistlib.dump(info, f)
+PY
+codesign --force --sign - "$control"
+"$harness/Contents/MacOS/AsideHostHarness" --bundle-probe "$control"
 mkdir -p dist/smoke
 open -g --stderr "$PWD/dist/smoke/ime-startup.txt" "$HOME/Library/Input Methods/Aside.app"
 sleep 2

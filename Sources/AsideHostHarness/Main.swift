@@ -12,7 +12,9 @@ import AsideOffline
         let app = NSApplication.shared
         Task { @MainActor in
             do {
-                if CommandLine.arguments.contains("--system-probe") {
+                if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--bundle-probe" {
+                    try await bundleProbe(URL(fileURLWithPath: CommandLine.arguments[2]))
+                } else if CommandLine.arguments.contains("--system-probe") {
                     try await systemProbe()
                 } else if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--live" {
                     try await liveInput(URL(fileURLWithPath: CommandLine.arguments[2]))
@@ -27,6 +29,22 @@ import AsideOffline
             } catch { fputs("Host test failed: \(error)\n", stderr); exit(1) }
         }
         app.run()
+    }
+
+    @MainActor static func bundleProbe(_ url: URL) async throws {
+        guard let identifier = Bundle(url: url)?.bundleIdentifier else { throw Failure.registration }
+        let original = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+        defer {
+            if let original { _ = TISSelectInputSource(original) }
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: identifier) { app.terminate() }
+        }
+        print("Single-source control registration:", TISRegisterInputSource(url as CFURL))
+        let query = [kTISPropertyBundleID as String: identifier] as CFDictionary
+        let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+        for source in sources {
+            print("Single-source control enable:", TISEnableInputSource(source))
+            print("Single-source control select:", TISSelectInputSource(source))
+        }
     }
 
     @MainActor static func systemProbe() async throws {

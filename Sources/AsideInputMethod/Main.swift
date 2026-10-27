@@ -11,7 +11,11 @@ import AsideCore
         do {
             try RimeEngine.initialize()
             _ = InputController.self
-            server = IMKServer(name: "io.github.pengruoxin.inputmethod.Aside_Connection", bundleIdentifier: "io.github.pengruoxin.inputmethod.Aside")
+            guard let identifier = Bundle.main.bundleIdentifier,
+                  let connection = Bundle.main.object(forInfoDictionaryKey: "InputMethodConnectionName") as? String else {
+                throw SmokeError.invalidMetadata
+            }
+            server = IMKServer(name: connection, bundleIdentifier: identifier)
             NSLog("Aside input method server initialized: %@", server == nil ? "no" : "yes")
             fputs("Aside server initialized: \(server != nil)\n", stderr)
         } catch {
@@ -19,6 +23,7 @@ import AsideCore
         }
     }
     func applicationWillTerminate(_ notification: Notification) { RuntimeManager.shared.stop() }
+    private enum SmokeError: Error { case invalidMetadata }
 }
 
 @main enum InputMethodMain {
