@@ -17,7 +17,7 @@ let package = Package(
         .target(name: "AsideOffline", dependencies: ["AsideCore"]),
         .executableTarget(name: "AsideInputMethod", dependencies: ["AsideCore", "AsideOffline", "RimeBridge"]),
         .executableTarget(name: "AsideInstaller", dependencies: ["AsideOffline", "AsideCore"]),
-        .executableTarget(name: "AsideHostHarness", dependencies: ["AsideCore"]),
+        .executableTarget(name: "AsideHostHarness", dependencies: ["AsideCore", "AsideOffline"]),
         .testTarget(name: "AsideCoreTests", dependencies: ["AsideCore"])
     ]
 )

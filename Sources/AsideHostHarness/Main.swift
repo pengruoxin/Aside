@@ -3,6 +3,7 @@ import WebKit
 import Carbon
 import Darwin
 import AsideCore
+import AsideOffline
 
 /// CI-only host controls. This executable is not included in the installer.
 @main enum HostHarness {
@@ -73,6 +74,7 @@ import AsideCore
 
     @MainActor static func register(_ bundle: URL) async throws {
         print("Registering input method metadata:", bundle.lastPathComponent)
+        try InputSourceRegistration.enableInstalledBundle(bundle)
         let registration = TISRegisterInputSource(bundle as CFURL)
         print("TISRegisterInputSource status:", registration)
         guard registration == noErr else { throw Failure.registration }

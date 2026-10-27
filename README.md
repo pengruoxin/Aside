@@ -1,93 +1,71 @@
 # 句外 Aside
 
-**中文照常写，英文顺手学。**
+**在正在打字的地方，学会另一种表达。**
 
-原生 Mac 英语学习助手，保留苹果自带拼音与 ABC。
+句外正在改为真正的 macOS 输入法：中文整句翻译、英文整句改写，附中文讲解。日常口语与学术表达二选一，目标是在百度搜索框、微信聊天框等现有输入框里使用。
 
-[![macOS build](https://github.com/pengruoxin/Aside/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/pengruoxin/Aside/actions/workflows/macos.yml)
+## 当前进度
 
-## 下载安装
+**0.3 输入法版本正在验证，尚未发布可用 DMG。** 离线模型已在 macOS CI 实际运行；系统可识别两个输入模式，切换和实际输入仍在排错。请勿把旧版 0.2 编辑器安装包当作新版输入法。
 
-**[下载 M 系列 Mac 版](https://github.com/pengruoxin/Aside/releases/download/v0.2.0/Aside-0.2.0-arm64.dmg)** · **[下载 Intel Mac 版](https://github.com/pengruoxin/Aside/releases/download/v0.2.0/Aside-0.2.0-x86_64.dmg)** · [全部版本](https://github.com/pengruoxin/Aside/releases)
+[构建结果](https://github.com/pengruoxin/Aside/actions/workflows/macos.yml) · [已发布版本](https://github.com/pengruoxin/Aside/releases)
 
-1. 关于本机显示 Apple M 系列选 arm64，显示 Intel 选 x86_64。
-2. 打开 DMG，把 Aside 拖入 Applications，再从 Applications 打开。
-3. 菜单栏出现“句外”表示已运行。在首次引导中配置翻译服务，再点“测试翻译连接”。
-
-**应用可直接安装启动，但不内置模型、免费 API 额度或服务账户。翻译前需选择以下一种服务：**
-
-- **本机 Ollama**：安装并启动 [Ollama](https://ollama.com/download/mac)，自行安装中英双语模型，在句外点“检测本机模型”选择。
-- **云端 API**：填写 HTTPS API 基础地址、模型名和自己的 API Key，支持 Chat Completions JSON 模式。密钥按地址存入 Mac 钥匙串。
-
-这是 **v0.2.0 预览版，尚无 Apple Developer ID 签名与公证**。首次打开若被系统阻止，请核对本仓库 Release 来源，再到系统设置 → 隐私与安全性中选择“仍要打开”。无需关闭 Gatekeeper，不要运行停用安全保护的命令。下载页提供 SHA-256 校验文件。
+当前面向 **Apple Silicon、macOS 26+**，优先适配 13 英寸 MacBook Air（M5、16GB）。苹果拼音和 ABC 可以保留，选中句外输入源时才提供句外功能。拼音引擎使用 Rime，操作尽量遵循 macOS，候选排序不会与苹果拼音完全相同。
 
 ## 日常使用
 
-中文继续用苹果拼音，英文继续用 ABC。句外不重新实现拼音、不更改 Caps Lock、地球键、Control–空格或你已配置的输入源切换习惯。
-
-**其他应用：** 选中一句中文或英文，从原应用菜单“服务 → 使用句外处理”，再点菜单栏句外查看和复制结果。部分应用也支持“读取当前应用选中文字”，需要辅助功能授权。
-
-服务菜单未出现时，可在系统设置 → 键盘 → 键盘快捷键 → 服务中检查，并按个人习惯分配系统服务快捷键。自定义编辑器可能不提供系统服务或标准选区，此时复制到句外编辑区。
-
-**句外原生编辑区：** 正常输入中文或英文，完整内容在句末稳定后处理，或手动点“处理整段”。英文以浅灰字排在原文下方。点击译文查看讲解、复制或收藏；“英文输出”允许主动确认替换，并支持原生撤销。
-
-**目前第三方应用不支持通用框内灰字。** 框内提示只在句外自己的原生编辑区实现。跨应用不自动替换、发送或模拟退格；备忘录与文本编辑的自动检测仍为实验功能，默认关闭。
-
-## 功能
-
-| 选择 | 行为 |
+| 操作 | 行为 |
 |---|---|
-| 中文输入 | 翻译成英文，附中文讲解 |
-| 英文输入 | 改写英文，附中文讲解 |
-| 日常口语 / 学术表达 | 二选一，每次只展示一个版本 |
-| 学习对照 / 英文输出 | 保留原文，或主动替换句外编辑区 |
-| 自动 / 手动 | 句末稳定后处理，不逐词展示零碎翻译 |
-| 收藏 | 只保存主动收藏的句子，可回看、复制、移除 |
-| 暂停与清空 | 暂停处理，或清除当前原文和结果 |
+| 句外拼音 | 空格、数字选词，累积成句；中文整句翻译 |
+| 句外英文 | 正常输入英文，整句改写并给出中文讲解 |
+| 口语 / 学术 | 设置中二选一，每次只显示一个版本 |
+| 句末停顿 | 自动处理完整句子，不逐词翻译 |
+| Control–Option–T | 手动处理当前句子，适合没有句号的搜索词 |
+| Return | 有拼音时先确认；无拼音时提交原文，交回应用搜索或发送 |
+| 学习对照 | 保持原文，点击英文候选看中文讲解 |
+| 英文输出 | 英文候选就绪后按 Tab 或点击，明确采用英文 |
+| Esc | 取消当前拼音或隐藏学习提示 |
+| 输入源切换 | 使用 macOS 已配置的地球键、Control–空格、Caps Lock 等设置 |
 
-最多处理 2000 字，超限不静默截断。表达要求保留原文事实、否定与不确定性；模型仍可能出错，请检查结果。
+**译文显示在原生输入法候选区。** 当前没有实现所有应用通用的输入框内浅灰英文；译文不混进搜索词或聊天正文，不自动发送。模型未就绪或处理失败时仍可输入原文。每次最多处理 600 字；超长内容保留原文，不静默截断后翻译。
 
-## 原生界面
+## 完全离线
 
-以下为 GitHub Actions 中实际运行的 macOS 程序截图，译文使用展示示例。
+完整包内置 Rime、Luna Pinyin 词典、llama.cpp 与 Qwen2.5-1.5B-Instruct Q4_K_M 模型（约 1.1GB），安装后不需要 API Key、Ollama 或 Homebrew。模型在本机运行，只绑定本机回环地址并使用临时令牌，不向外部翻译服务发送原文。
 
-![原生编辑区](docs/images/writing.png)
-![偏好设置](docs/images/settings.png)
-![首次使用引导](docs/images/welcome.png)
+设置也提供苹果本机模型选项，需要 Apple Intelligence 实际可用。默认使用包内模型，不依赖苹果本机模型的地区或账户条件。可从可信来源导入兼容 GGUF。小模型可能误译，学术风格和讲解质量仍需人工检查。
 
-## 隐私
+不保存全部输入历史、不记录原文日志、不读取其他应用的聊天记录。Rime 会在本机维护选词学习数据；只有当前由句外输入的组合文本用于学习提示。
 
-- 默认连接本机 Ollama；云端模式向你配置并同意的 HTTPS 服务发送当前处理内容和表达要求。
-- 云端同意本次运行有效，更改地址后需重新确认。API Key 不写入仓库或偏好文件。
-- 不监听全局键盘，不自动保存全部输入历史。仅主动收藏的句子保存在本机。
-- 安全密码控件不参与读取；自动检测仅限明确允许的应用与控件。
-- 编辑、暂停、改变设置或切换来源会取消旧请求；手动选区结果不会被自动检测失败误清空。
-- 本客户端不记录原文日志；服务商的数据规则和费用请自行确认。
+## 安装方式
 
-## 构建与测试
+新版发布后，打开 DMG 内的“安装句外”，安装器将输入法放入当前用户的 `~/Library/Input Methods/Aside.app` 并注册。它不是拖入 Applications 的独立编辑器。若输入菜单没有出现，请在系统设置 → 键盘 → 文本输入 → 编辑中添加句外，必要时退出登录后重新登录。
 
-目标 macOS 13+，无第三方依赖，需 Xcode / Command Line Tools。
+升级前切换到 ABC 或苹果拼音。安装器暂存并验证新包，备份原包后替换；升级后需要退出登录再登录以加载新版本。完整包内含模型，可以断网测试。
+
+目前没有 Apple Developer ID 签名或公证。系统可能要求在“隐私与安全性”中确认打开，无需关闭安全保护。
+
+## 构建与验证
+
+在 Apple Silicon Mac、macOS 26+、Xcode / Command Line Tools 环境中：
 
 ```sh
-git clone https://github.com/pengruoxin/Aside.git
-cd Aside
-bash scripts/build-macos.sh
+brew install librime cmake
+ASIDE_INCLUDE_MODEL=1 bash scripts/build-ime.sh
 bash scripts/package-dmg.sh
-open dist/Aside.app
 ```
 
-CI 在 Apple Silicon 与 Intel 的 macOS 15 上分别执行单元测试、release 构建、原生启动 / 编辑 / 撤销检查、界面截图、DMG 校验。推送版本标签后，两个架构均成功才发布 Release。
+构建阶段联网下载固定版本的词典、推理程序和模型，模型校验 SHA-256；安装后不需要这些构建依赖。完整包仅在检查全部通过后生成至 `dist/Aside-0.3.0-arm64-offline.dmg`。CI 轻量构建不含模型，不能作为完整离线安装包。
 
-测试使用模拟服务，不需要真实密钥。**macOS 13 是部署目标，目前 CI 验证环境为 macOS 15。** 自动测试不等于所有系统版本、苹果拼音候选交互和第三方应用已实测。详见 [兼容性清单](docs/compatibility.md) 与 [验证记录](docs/verification.md)。
+CI 检查核心逻辑、安装失败回滚、Rime 实际选词、本机离线生成、标准原生与 WebKit 输入控件、系统输入源注册和切换。**标准控件测试不等于百度、微信已经验收。** Windows 开发环境无法代替目标 Mac 的实际使用测试。详见 [验证记录](docs/verification.md)。
 
-## 项目结构
+## 源码与许可
 
-- `Sources/Aside`：原生窗口、菜单栏、设置、输入、辅助功能与钥匙串。
-- `Sources/AsideCore`：句界、语言判断、服务协议及请求校验。
-- `Tests/AsideCoreTests`：确定性测试，不使用真实 API Key。
-- `scripts`：图标、构建、DMG 打包。
-- `.github/workflows/macos.yml`：双架构验证与版本发布。
+- `Sources/AsideInputMethod`：系统输入法、按键与原生候选区。
+- `Sources/AsideOffline`：本机模型、原生设置、共享偏好。
+- `Sources/AsideInstaller`：当前用户输入法安装器。
+- `Sources/AsideCore`：句子状态、返回校验、安装事务。
+- `Sources/RimeBridge`：librime C 接口。
+- `Sources/AsideHostHarness`：不随安装包分发的测试控件。
 
-尚未提供正式签名 / 公证、全应用框内提示、外部自动替换、登录启动或自动更新。[反馈问题](https://github.com/pengruoxin/Aside/issues) 时请附系统版本、应用版本和复现步骤。
-
-MIT License，沿用仓库原有许可证。
+句外代码为 MIT；librime 为 BSD，Luna Pinyin / Rime Essay 数据为 LGPL-3.0，llama.cpp 为 MIT，Qwen 模型为 Apache-2.0。安装包包含对应许可证与词典源文件。旧版编辑器截图和文档仅代表历史版本。

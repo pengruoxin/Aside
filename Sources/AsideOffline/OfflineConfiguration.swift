@@ -9,9 +9,15 @@ import AsideCore
     @Published public var englishOutput: Bool { didSet { Self.store.set(englishOutput, forKey: "imeEnglishOutput"); Self.changed() } }
     @Published public var automatic: Bool { didSet { Self.store.set(automatic, forKey: "imeAutomatic"); Self.changed() } }
     @Published public var paused: Bool { didSet { Self.store.set(paused, forKey: "imePaused"); Self.changed() } }
-    @Published public var engine: String { didSet { Self.store.set(engine, forKey: "imeEngine"); Self.changed() } }
+    @Published public var engine: String { didSet {
+        if engine != oldValue { RuntimeManager.shared.stop() }
+        Self.store.set(engine, forKey: "imeEngine"); Self.changed()
+    } }
     @Published public var status = "离线输入法 · Control–Option–T 处理当前句子"
-    @Published public var customModel: String { didSet { Self.store.set(customModel, forKey: "imeCustomModel"); Self.changed() } }
+    @Published public var customModel: String { didSet {
+        if customModel != oldValue { RuntimeManager.shared.stop() }
+        Self.store.set(customModel, forKey: "imeCustomModel"); Self.changed()
+    } }
     private var observer: NSObjectProtocol?
     public static let notification = Notification.Name("io.github.pengruoxin.Aside.PreferencesChanged")
     private static func changed() {

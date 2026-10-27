@@ -79,6 +79,10 @@ open -g --stderr "$PWD/dist/smoke/ime-startup.txt" "$HOME/Library/Input Methods/
 sleep 2
 pgrep -fl AsideInputMethod || true
 cat dist/smoke/ime-startup.txt || true
+"$harness/Contents/MacOS/AsideHostHarness" --register "$HOME/Library/Input Methods/Aside.app"
+# Refresh the CI login's input menu after registering its first third-party IME.
+killall TextInputMenuAgent 2>/dev/null || true
+sleep 2
 if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
   /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
   xcrun lldb --batch \

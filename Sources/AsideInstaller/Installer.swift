@@ -37,11 +37,7 @@ import AsideCore
                         if check.terminationStatus != 0 { throw InstallError.invalidSignature }
                     })
                 }.value
-                guard TISRegisterInputSource(destination as CFURL) == noErr else { throw InstallError.registrationFailed }
-                let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
-                let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
-                for input in sources { _ = TISEnableInputSource(input) }
-                guard !sources.isEmpty else { throw InstallError.registrationFailed }
+                try InputSourceRegistration.enableInstalledBundle(destination)
                 installed = true
                 message = backup == nil
                     ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请注销后重新登录，再在键盘设置添加。"
