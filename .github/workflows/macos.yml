@@ -1,0 +1,26 @@
+name: Native macOS build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: swift --version
+      - name: Unit tests and app bundle
+        run: bash scripts/build-macos.sh
+      - name: Package app preserving permissions
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Aside.app dist/Aside-${{ runner.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Aside-${{ runner.arch }}
+          path: dist/Aside-*.zip
