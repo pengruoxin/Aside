@@ -18,7 +18,7 @@ Return 有拼音时只确认组合输入；无拼音时提交原文并交给宿�
 
 ## 离线引擎
 
-macOS26 可用时使用 FoundationModels 本机系统模型；运行时检查可用性与语言支持，不假设 Apple Intelligence 已启用或地区可用。完整离线安装包另带 llama.cpp 静态推理程序与 Qwen2.5-1.5B-Instruct Q4_K_M GGUF（1117320736 字节，SHA256 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e）。系统模型不可用时用包内模型。设备无需安装 Ollama、Homebrew 或输入 API Key。推理只绑定 loopback 随机端口并使用临时随机令牌，不向远程发送输入内容。
+默认使用包内模型。设置中可选择 FoundationModels 本机系统模型；运行时检查可用性，不假设 Apple Intelligence 已启用或地区可用。完整离线安装包带 llama.cpp 静态推理程序与 Qwen2.5-1.5B-Instruct Q4_K_M GGUF（1117320736 字节，SHA256 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e）。苹果本机模型不可用时可在设置中切回包内模型。设备无需安装 Ollama、Homebrew 或输入 API Key。推理只绑定 loopback 随机端口并使用临时随机令牌，不向远程发送输入内容。
 
 构建期下载第三方源与模型并核对哈希，附相应许可证。用户下载完整安装包后可断网使用。首次测试小模型的表达质量与速度，不将结构化返回当作准确性证明。
 

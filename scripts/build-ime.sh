@@ -80,6 +80,7 @@ sleep 2
 pgrep -fl AsideInputMethod || true
 cat dist/smoke/ime-startup.txt || true
 "$harness/Contents/MacOS/AsideHostHarness" --register "$HOME/Library/Input Methods/Aside.app"
+defaults read com.apple.HIToolbox AppleEnabledInputSources
 # Refresh the CI login's input menu after registering its first third-party IME.
 killall TextInputMenuAgent 2>/dev/null || true
 sleep 2

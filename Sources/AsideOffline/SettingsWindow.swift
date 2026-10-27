@@ -58,6 +58,9 @@ public struct OfflineSettingsView: View {
                     Text("苹果本机模型（需 Apple Intelligence 可用）").tag("apple")
                 }
                 Label(OfflinePaths.model == nil ? "未找到句外离线语言包" : "句外离线语言包已就绪", systemImage: OfflinePaths.model == nil ? "exclamationmark.circle" : "checkmark.circle")
+                if let model = OfflinePaths.model {
+                    Text("当前语言包：" + model.lastPathComponent).font(.caption).foregroundStyle(.secondary)
+                }
                 Text(OfflineTranslator.appleAvailable ? "苹果本机模型可用。" : "苹果本机模型当前不可用；包内模型不依赖它。")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
@@ -72,6 +75,13 @@ public struct OfflineSettingsView: View {
                         }
                     }.disabled(testing)
                     Button("导入 GGUF…") { importModel() }
+                        .disabled(testing)
+                    if !settings.customModel.isEmpty {
+                        Button("恢复包内模型") {
+                            settings.customModel = ""
+                            result = "已恢复包内语言模型。"
+                        }.disabled(testing)
+                    }
                     if testing { ProgressView().controlSize(.small) }
                 }
                 if !result.isEmpty { Text(result).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }

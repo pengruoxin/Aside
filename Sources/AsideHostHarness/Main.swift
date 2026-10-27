@@ -72,20 +72,15 @@ import AsideOffline
         window.close()
     }
 
-    @MainActor static func register(_ bundle: URL) async throws {
+    @MainActor static func register(_ bundle: URL, enable: Bool = true) async throws {
         print("Registering input method metadata:", bundle.lastPathComponent)
-        try InputSourceRegistration.enableInstalledBundle(bundle)
-        let registration = TISRegisterInputSource(bundle as CFURL)
-        print("TISRegisterInputSource status:", registration)
-        guard registration == noErr else { throw Failure.registration }
+        if enable { try InputSourceRegistration.enableInstalledBundle(bundle) }
         for _ in 0..<10 {
             let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
             let raw = TISCreateInputSourceList(query, true).takeRetainedValue()
             print("TIS input source count:", CFArrayGetCount(raw))
             let sources = (0..<CFArrayGetCount(raw)).map { unsafeBitCast(CFArrayGetValueAtIndex(raw, $0), to: TISInputSource.self) }
             for source in sources {
-                let status = TISEnableInputSource(source)
-                print("Enable source status:", status)
                 for key in [kTISPropertyInputSourceID, kTISPropertyInputSourceType, kTISPropertyInputModeID] {
                     if let value = TISGetInputSourceProperty(source, key) {
                         print(key, unsafeBitCast(value, to: CFString.self) as String)
@@ -109,7 +104,7 @@ import AsideOffline
     }
 
     @MainActor static func liveInput(_ bundle: URL) async throws {
-        try await register(bundle)
+        try await register(bundle, enable: false)
         let original = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
         defer { if let original { _ = TISSelectInputSource(original) } }
         let editor = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 130))
