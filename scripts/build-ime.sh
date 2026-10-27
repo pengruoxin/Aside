@@ -74,7 +74,11 @@ EOF
 codesign --force --sign - "$harness"
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
+open -g "$HOME/Library/Input Methods/Aside.app"
+sleep 2
+pgrep -fl AsideInputMethod || true
 if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
+  /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
   xcrun lldb --batch \
     -o "run --live \"$HOME/Library/Input Methods/Aside.app\"" \
     -o "thread backtrace all" -- "$harness/Contents/MacOS/AsideHostHarness" || true

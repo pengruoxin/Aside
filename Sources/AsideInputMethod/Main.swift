@@ -6,10 +6,12 @@ import AsideCore
 @MainActor final class InputMethodDelegate: NSObject, NSApplicationDelegate {
     var server: IMKServer?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSLog("Aside input method starting; controller available: %@", NSClassFromString("AsideInputController") == nil ? "no" : "yes")
         do {
             try RimeEngine.initialize()
             _ = InputController.self
             server = IMKServer(name: "io.github.pengruoxin.inputmethod.Aside_Connection", bundleIdentifier: "io.github.pengruoxin.inputmethod.Aside")
+            NSLog("Aside input method server initialized: %@", server == nil ? "no" : "yes")
         } catch {
             OfflineConfiguration.shared.status = error.localizedDescription
         }
