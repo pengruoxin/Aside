@@ -81,7 +81,10 @@ import AsideCore
             let raw = TISCreateInputSourceList(query, true).takeRetainedValue()
             print("TIS input source count:", CFArrayGetCount(raw))
             let sources = (0..<CFArrayGetCount(raw)).map { unsafeBitCast(CFArrayGetValueAtIndex(raw, $0), to: TISInputSource.self) }
-            for source in sources { _ = TISEnableInputSource(source) }
+            for source in sources {
+                let status = TISEnableInputSource(source)
+                print("Enable source status:", status)
+            }
             let ids = sources.compactMap { input -> String? in
                 guard let value = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) else { return nil }
                 return unsafeBitCast(value, to: CFString.self) as String
@@ -133,7 +136,15 @@ import AsideCore
         for source in sources {
             if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),
                (unsafeBitCast(value, to: CFString.self) as String).hasSuffix(suffix) {
-                guard TISSelectInputSource(source) == noErr else { throw Failure.registration }
+                let status = TISSelectInputSource(source)
+                print("Select mode", suffix, "status:", status)
+                if let enabled = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) {
+                    print("Enabled:", CFBooleanGetValue(unsafeBitCast(enabled, to: CFBoolean.self)))
+                }
+                if let selectable = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsSelectCapable) {
+                    print("Selectable:", CFBooleanGetValue(unsafeBitCast(selectable, to: CFBoolean.self)))
+                }
+                guard status == noErr else { throw Failure.registration }
                 return
             }
         }
