@@ -39,6 +39,7 @@ struct NativeEditor: NSViewRepresentable {
             editor.didChangeText()
             editor.undoManager?.setActionName("句外替换")
             editor.breakUndoCoalescing()
+            context.coordinator.reportHeight(editor)
         }
     }
 

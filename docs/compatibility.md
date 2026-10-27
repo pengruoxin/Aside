@@ -1,12 +1,13 @@
 # Mac 实机验收清单
 
-状态：全部待实测。Windows 静态检查不等于通过。
+状态：macOS 15 的双架构自动构建与原生启动已通过；以下未勾选项仍待用户实机验证。
 
 ## 构建
-- [ ] Apple Silicon：swift test、release、codesign verify
-- [ ] Intel：同上
+- [x] Apple Silicon：swift test、release、codesign verify
+- [x] Intel：同上
 - [ ] macOS 13 最低版本；后续系统分别记录
-- [ ] 运行打包 app、菜单栏可见、退出与重开
+- [x] 打包 app 可启动，NSTextView 编辑与撤销自动检查通过
+- [ ] 菜单栏日常使用、用户手动退出与重开
 
 ## 输入
 - [ ] 苹果拼音连续逐词输入，候选数字 / 空格 / 删除 / Esc 不受影响

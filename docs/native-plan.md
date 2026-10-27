@@ -1,5 +1,7 @@
 # 原生 Mac 开发计划
 
+后续状态：已通过 GitHub Actions 的 macOS 双架构构建和原生启动验证，详见 verification.md。下文保留起步阶段的计划背景。
+
 用户确认：保留苹果拼音和系统英文输入，原生常用工具；中文翻译，英文改写，两者附中文讲解。当前 Windows 无 Swift/Xcode，不宣称 Mac 构建通过。
 
 ## 范围与取舍

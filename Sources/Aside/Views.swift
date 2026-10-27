@@ -42,6 +42,7 @@ struct WritingView: View {
     @State private var editorHeight: CGFloat = 54
 
     var body: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 BrandMark()
@@ -91,7 +92,8 @@ struct WritingView: View {
             Text("使用系统拼音与 ABC；支持你的现有输入源切换设置。此处英文提示不属于可输入正文。")
                 .font(.caption).foregroundStyle(.tertiary)
         }
-        .padding(26).frame(minWidth: 550, minHeight: 470).tint(AsideTheme.accent)
+        .padding(26)
+        }.frame(minWidth: 550, minHeight: 470).tint(AsideTheme.accent)
     }
 }
 
@@ -101,6 +103,7 @@ struct MenuContent: View {
     @Environment(\.openWindow) var openWindow
 
     var body: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 14) {
             HStack { Text("句外 Aside").font(.headline); Spacer(); Text(preferences.style.title).font(.caption).foregroundStyle(.secondary) }
             Text(assistant.message).font(.caption).foregroundStyle(.secondary)
@@ -118,6 +121,7 @@ struct MenuContent: View {
             Text("也可使用原应用菜单：服务 → 使用句外处理。\n不会修改中文候选词和系统切换键。")
                 .font(.caption).foregroundStyle(.secondary)
             Button("退出句外") { NSApp.terminate(nil) }
-        }.padding(18).frame(width: 370).tint(AsideTheme.accent)
+        }.padding(18)
+        }.frame(width: 370).frame(minHeight: 300, maxHeight: 560).tint(AsideTheme.accent)
     }
 }

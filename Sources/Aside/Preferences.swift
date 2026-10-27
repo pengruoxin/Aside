@@ -30,5 +30,5 @@ import AsideCore
         autoDraft = UserDefaults.standard.object(forKey: "autoDraft") as? Bool ?? true
     }
 
-    var needsSetup: Bool { backend == "cloud" ? cloudModel.isEmpty : model.isEmpty }
+    var needsSetup: Bool { backend == "cloud" ? cloudModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !cloudConsent : model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }

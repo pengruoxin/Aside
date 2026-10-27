@@ -23,6 +23,7 @@ import AsideCore
     private var stableKey = ""
     private var stableSince = Date()
     private var submittedKey = ""
+    private var requestOrigin = WritingOrigin.editor
 
     private init() {
         polling = Timer.publish(every: 0.8, on: .main, in: .common).autoconnect().sink { [weak self] _ in self?.poll() }
@@ -55,34 +56,37 @@ import AsideCore
         invalidate()
         isExternal = false
         guard !preferences.paused, preferences.autoDraft, !composing, let source = SentencePolicy.completed(draft) else { return }
-        generate(source: source, external: false, debounce: true)
+        generate(source: source, origin: .editor, debounce: true)
     }
 
     func processDraft() {
         guard !composing else { message = "请先确认当前中文候选词。"; return }
-        generate(source: draft, external: false)
+        generate(source: draft, origin: .editor)
     }
 
     /// macOS Services provides exactly the text explicitly selected by the user.
     func processServiceText(_ source: String) {
-        generate(source: source, external: true)
+        generate(source: source, origin: .selection)
     }
 
     func processSelection() {
+        invalidate()
         guard let snapshot = accessibility.capture(selectionOnly: true) else {
             message = "没有读到选中文字。可在原应用的“服务”菜单中选择“使用句外处理”，或粘贴到句外。"
             return
         }
-        generate(source: snapshot.text, external: true)
+        generate(source: snapshot.text, origin: .selection)
     }
 
-    private func generate(source: String, external: Bool, debounce: Bool = false) {
+    private func generate(source: String, origin: WritingOrigin, debounce: Bool = false) {
         invalidate()
+        requestOrigin = origin
+        let external = origin.isExternal
+        isExternal = external
         guard !preferences.paused else { message = "句外已暂停。"; return }
         let source = source.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !source.isEmpty, source.count <= SentencePolicy.limit,
               SentencePolicy.language(of: source) != .undetermined else { message = WritingError.invalidSource.localizedDescription; return }
-        isExternal = external
         let token = version
         let style = preferences.style
         let configuration = serviceConfiguration()
@@ -157,18 +161,18 @@ import AsideCore
               let snapshot = accessibility.capture(selectionOnly: false),
               let source = SentencePolicy.completed(snapshot.text) else {
             stableKey = ""
-            if isExternal && preferences.automatic { invalidate() }
+            if requestOrigin.discardWhenAutomaticContextIsLost { invalidate() }
             return
         }
         let key = "\(snapshot.processID):\(snapshot.identity):\(source)"
         if key != stableKey {
-            if isExternal { invalidate() }
+            if requestOrigin.discardWhenAutomaticContextIsLost { invalidate() }
             stableKey = key
             stableSince = Date()
             return
         }
         guard Date().timeIntervalSince(stableSince) >= 1.5, key != submittedKey else { return }
         submittedKey = key
-        generate(source: source, external: true)
+        generate(source: source, origin: .automatic)
     }
 }

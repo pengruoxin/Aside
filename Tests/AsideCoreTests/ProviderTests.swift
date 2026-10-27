@@ -2,6 +2,12 @@ import XCTest
 @testable import AsideCore
 
 final class ProviderTests: XCTestCase {
+    func testAutomaticReadLossDoesNotDiscardManualSelection() {
+        XCTAssertFalse(WritingOrigin.selection.discardWhenAutomaticContextIsLost)
+        XCTAssertTrue(WritingOrigin.automatic.discardWhenAutomaticContextIsLost)
+        XCTAssertFalse(WritingOrigin.editor.isExternal)
+        XCTAssertTrue(WritingOrigin.selection.isExternal)
+    }
     func testCloudEndpointAppendsPathWithoutDuplicateSlash() throws {
         XCTAssertEqual(try CloudEndpoint.url(base: "https://api.example.com/v1/").absoluteString, "https://api.example.com/v1/chat/completions")
     }
