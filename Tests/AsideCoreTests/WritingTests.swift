@@ -31,6 +31,7 @@ final class WritingTests: XCTestCase {
     func testValidatesModelResult() throws {
         XCTAssertThrowsError(try WritingResult.validated(expression: "  ", explanation: "说明"))
         XCTAssertThrowsError(try WritingResult.validated(expression: "Hello.", explanation: ""))
+        XCTAssertThrowsError(try WritingResult.validated(expression: "Hello.", explanation: "A friendly greeting."))
         XCTAssertEqual(try WritingResult.validated(expression: " Hello. ", explanation: " 问候 ").expression, "Hello.")
     }
 }
