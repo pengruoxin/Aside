@@ -13,11 +13,12 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
     private var endpoint: (Int, String)?
     private var startupID = UUID()
     private var lastUsed = Date()
+    private var inFlight = 0
     private var idle: Timer?
     private init() {
         idle = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, Date().timeIntervalSince(self.lastUsed) > 180 else { return }
+                guard let self, self.inFlight == 0, Date().timeIntervalSince(self.lastUsed) > 180 else { return }
                 self.stop()
             }
         }
@@ -83,6 +84,8 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
     }
     public func generate(_ writing: WritingRequest) async throws -> WritingResult {
         guard writing.source.count <= 600 else { throw OfflineError.inputTooLong }
+        inFlight += 1
+        defer { inFlight -= 1; lastUsed = Date() }
         let (port, key) = try await ready()
         try Task.checkCancellation()
         var request = URLRequest(url: try OfflineEndpoint.completion(port: port))
