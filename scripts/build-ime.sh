@@ -85,6 +85,7 @@ cat dist/smoke/ime-startup.txt || true
 defaults read com.apple.HIToolbox AppleEnabledInputSources
 # Refresh the CI login's input menu after registering its first third-party IME.
 killall TextInputMenuAgent 2>/dev/null || true
+killall imklaunchagent 2>/dev/null || true
 sleep 2
 if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
   /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
