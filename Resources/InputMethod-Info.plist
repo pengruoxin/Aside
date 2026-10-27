@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>AsideInputMethod</string>
-<key>CFBundleIdentifier</key><string>io.github.pengruoxin.Aside.InputMethod</string>
+<key>CFBundleIdentifier</key><string>io.github.pengruoxin.inputmethod.Aside</string>
 <key>CFBundleName</key><string>句外</string>
 <key>CFBundleDisplayName</key><string>句外输入法</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -13,14 +13,14 @@
 <key>LSUIElement</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
-<key>TISInputSourceID</key><string>io.github.pengruoxin.Aside.InputMethod</string>
-<key>InputMethodConnectionName</key><string>AsideInputMethod_Connection</string>
+<key>TISInputSourceID</key><string>io.github.pengruoxin.inputmethod.Aside</string>
+<key>InputMethodConnectionName</key><string>io.github.pengruoxin.inputmethod.Aside_Connection</string>
 <key>InputMethodServerControllerClass</key><string>AsideInputController</string>
 <key>TICapsLockLanguageSwitchCapable</key><true/>
 <key>ComponentInputModeDict</key><dict>
   <key>tsInputModeListKey</key><dict>
-    <key>io.github.pengruoxin.Aside.InputMethod.Chinese</key><dict>
-      <key>TISInputSourceID</key><string>io.github.pengruoxin.Aside.InputMethod.Chinese</string>
+    <key>io.github.pengruoxin.inputmethod.Aside.Chinese</key><dict>
+      <key>TISInputSourceID</key><string>io.github.pengruoxin.inputmethod.Aside.Chinese</string>
       <key>TISIntendedLanguage</key><string>zh-Hans</string>
       <key>tsInputModeNameKey</key><string>句外拼音</string>
       <key>tsInputModeCharacterRepertoireKey</key><array><string>Hans</string></array>
@@ -30,8 +30,8 @@
       <key>tsInputModePrimaryInScriptKey</key><true/>
       <key>tsInputModeMenuIconFileKey</key><string>Aside.icns</string>
     </dict>
-    <key>io.github.pengruoxin.Aside.InputMethod.English</key><dict>
-      <key>TISInputSourceID</key><string>io.github.pengruoxin.Aside.InputMethod.English</string>
+    <key>io.github.pengruoxin.inputmethod.Aside.English</key><dict>
+      <key>TISInputSourceID</key><string>io.github.pengruoxin.inputmethod.Aside.English</string>
       <key>TISIntendedLanguage</key><string>en</string>
       <key>tsInputModeNameKey</key><string>句外英文</string>
       <key>tsInputModeCharacterRepertoireKey</key><array><string>Latn</string></array>
@@ -43,8 +43,8 @@
     </dict>
   </dict>
   <key>tsVisibleInputModeOrderedArrayKey</key><array>
-    <string>io.github.pengruoxin.Aside.InputMethod.Chinese</string>
-    <string>io.github.pengruoxin.Aside.InputMethod.English</string>
+    <string>io.github.pengruoxin.inputmethod.Aside.Chinese</string>
+    <string>io.github.pengruoxin.inputmethod.Aside.English</string>
   </array>
 </dict>
 </dict></plist>

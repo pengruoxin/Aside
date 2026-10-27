@@ -9,7 +9,7 @@ import AsideCore
         do {
             try RimeEngine.initialize()
             _ = InputController.self
-            server = IMKServer(name: "AsideInputMethod_Connection", bundleIdentifier: "io.github.pengruoxin.Aside.InputMethod")
+            server = IMKServer(name: "io.github.pengruoxin.inputmethod.Aside_Connection", bundleIdentifier: "io.github.pengruoxin.inputmethod.Aside")
         } catch {
             OfflineConfiguration.shared.status = error.localizedDescription
         }

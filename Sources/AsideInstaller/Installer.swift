@@ -20,13 +20,13 @@ import AsideCore
                 try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
                 if let current = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
                    let value = TISGetInputSourceProperty(current, kTISPropertyBundleID),
-                   (unsafeBitCast(value, to: CFString.self) as String) == "io.github.pengruoxin.Aside.InputMethod" {
+                   (unsafeBitCast(value, to: CFString.self) as String) == "io.github.pengruoxin.inputmethod.Aside" {
                     throw InstallError.inputMethodActive
                 }
                 let backupRoot = OfflinePaths.support.appendingPathComponent("Backups", isDirectory: true)
                 let backup = try await Task.detached(priority: .userInitiated) {
                     try InstallTransaction.install(source: source, destination: destination, backupRoot: backupRoot,
-                                                   identifier: "io.github.pengruoxin.Aside.InputMethod", validate: { staged in
+                                                   identifier: "io.github.pengruoxin.inputmethod.Aside", validate: { staged in
                         let check = Process()
                         check.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
                         check.arguments = ["--verify", "--deep", "--strict", staged.path]
@@ -38,7 +38,7 @@ import AsideCore
                     })
                 }.value
                 guard TISRegisterInputSource(destination as CFURL) == noErr else { throw InstallError.registrationFailed }
-                let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
+                let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
                 let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
                 for input in sources { _ = TISEnableInputSource(input) }
                 guard !sources.isEmpty else { throw InstallError.registrationFailed }

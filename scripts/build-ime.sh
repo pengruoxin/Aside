@@ -55,6 +55,9 @@ plutil -lint "$ime/Contents/Info.plist"
 codesign --force --sign - "$ime"
 codesign --verify --deep --strict "$ime"
 "$ime/Contents/MacOS/AsideInputMethod" --engine-smoke-test
+if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
+  "$ime/Contents/MacOS/AsideInputMethod" --offline-smoke-test
+fi
 "$bin/AsideHostHarness"
 harness="$PWD/dist/AsideHostHarness.app"
 mkdir -p "$harness/Contents/MacOS"
@@ -72,9 +75,6 @@ codesign --force --sign - "$harness"
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
 "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"
-if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
-  "$ime/Contents/MacOS/AsideInputMethod" --offline-smoke-test
-fi
 installer="$PWD/dist/安装句外.app"
 mkdir -p "$installer/Contents/MacOS" "$installer/Contents/Resources"
 cp "$bin/AsideInstaller" "$installer/Contents/MacOS/"

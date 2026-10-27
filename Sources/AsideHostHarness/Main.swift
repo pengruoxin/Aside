@@ -77,7 +77,7 @@ import AsideCore
         print("TISRegisterInputSource status:", registration)
         guard registration == noErr else { throw Failure.registration }
         for _ in 0..<10 {
-            let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
+            let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
             let raw = TISCreateInputSourceList(query, true).takeRetainedValue()
             print("TIS input source count:", CFArrayGetCount(raw))
             let sources = (0..<CFArrayGetCount(raw)).map { unsafeBitCast(CFArrayGetValueAtIndex(raw, $0), to: TISInputSource.self) }
@@ -86,7 +86,7 @@ import AsideCore
                 guard let value = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) else { return nil }
                 return unsafeBitCast(value, to: CFString.self) as String
             }
-            if ids.contains("io.github.pengruoxin.Aside.InputMethod.Chinese") && ids.contains("io.github.pengruoxin.Aside.InputMethod.English") {
+            if ids.contains("io.github.pengruoxin.inputmethod.Aside.Chinese") && ids.contains("io.github.pengruoxin.inputmethod.Aside.English") {
                 print("Registered two real TIS input modes:", ids)
                 return
             }
@@ -128,7 +128,7 @@ import AsideCore
         window.close()
     }
     @MainActor private static func selectMode(_ suffix: String) async throws {
-        let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
+        let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
         let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
         for source in sources {
             if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),

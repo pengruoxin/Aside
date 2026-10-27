@@ -24,7 +24,8 @@ jobs:
         with:
           path: .build-deps/llama
           key: llama-v0.7.0-macos26-arm64-static-1
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: model-cache
         if: env.ASIDE_INCLUDE_MODEL == '1'
         with:
           path: .build-deps/models
@@ -34,6 +35,11 @@ jobs:
       - name: Package complete offline installer
         if: env.ASIDE_INCLUDE_MODEL == '1'
         run: bash scripts/package-dmg.sh
+      - uses: actions/cache/save@v4
+        if: always() && env.ASIDE_INCLUDE_MODEL == '1' && steps.model-cache.outputs.cache-hit != 'true'
+        with:
+          path: .build-deps/models
+          key: qwen25-15b-6a1a2eb6
       - name: Build record
         if: always()
         run: |

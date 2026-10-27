@@ -2,7 +2,7 @@ import XCTest
 @testable import AsideCore
 
 final class InstallTests: XCTestCase {
-    private let identifier = "io.github.pengruoxin.Aside.InputMethod"
+    private let identifier = "io.github.pengruoxin.inputmethod.Aside"
     private func bundle(_ parent: URL, name: String, value: String, id: String? = nil) throws -> URL {
         let app = parent.appendingPathComponent(name + ".app")
         try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents"), withIntermediateDirectories: true)

@@ -48,7 +48,7 @@ import AsideCore
 
 public enum OfflinePaths {
     public static var inputMethodBundle: Bundle {
-        if Bundle.main.bundleIdentifier == "io.github.pengruoxin.Aside.InputMethod" { return .main }
+        if Bundle.main.bundleIdentifier == "io.github.pengruoxin.inputmethod.Aside" { return .main }
         if let payload = Bundle.main.url(forResource: "Aside", withExtension: "app"), let bundle = Bundle(url: payload) { return bundle }
         return .main
     }
