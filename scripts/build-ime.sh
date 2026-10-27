@@ -72,6 +72,8 @@ cat > "$harness/Contents/Info.plist" <<'EOF'
 </dict></plist>
 EOF
 codesign --force --sign - "$harness"
+"$harness/Contents/MacOS/AsideHostHarness" --system-probe
+stat -f 'CI console user: %Su' /dev/console
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
 mkdir -p dist/smoke

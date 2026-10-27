@@ -12,7 +12,9 @@ import AsideOffline
         let app = NSApplication.shared
         Task { @MainActor in
             do {
-                if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--live" {
+                if CommandLine.arguments.contains("--system-probe") {
+                    try await systemProbe()
+                } else if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--live" {
                     try await liveInput(URL(fileURLWithPath: CommandLine.arguments[2]))
                 } else if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--register" {
                     try await register(URL(fileURLWithPath: CommandLine.arguments[2]))
@@ -25,6 +27,18 @@ import AsideOffline
             } catch { fputs("Host test failed: \(error)\n", stderr); exit(1) }
         }
         app.run()
+    }
+
+    @MainActor static func systemProbe() async throws {
+        let original = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+        defer { if let original { _ = TISSelectInputSource(original) } }
+        let query = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM.ITABC"] as CFDictionary
+        let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+        for source in sources {
+            print("Control Apple Pinyin enable:", TISEnableInputSource(source))
+            print("Control Apple Pinyin select:", TISSelectInputSource(source))
+        }
+        print("Control Apple Pinyin count:", sources.count)
     }
 
     @MainActor static func nativeText() async throws {
