@@ -13,6 +13,7 @@ import AsideOffline
     private var generation: Task<Void, Never>?
     private var modeID = ""
     private var hasMarkedText = false
+    private var preferencesObserver: NSObjectProtocol?
     private lazy var panel: IMKCandidates? = {
         let panel = IMKCandidates(server: server(), panelType: kIMKSingleRowSteppingCandidatePanel)
         panel?.setAttributes([IMKCandidatesSendServerKeyEventFirst: NSNumber(value: true)])
@@ -32,6 +33,17 @@ import AsideOffline
             if rime == nil { rime = RimeEngine() }
             rime?.clear()
             updateMode()
+            if preferencesObserver == nil {
+                _ = OfflineConfiguration.shared
+                preferencesObserver = DistributedNotificationCenter.default().addObserver(forName: OfflineConfiguration.notification, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, self.active else { return }
+                        self.generation?.cancel()
+                        self.composition.invalidate()
+                        self.refresh()
+                    }
+                }
+            }
         }
     }
     override func deactivateServer(_ sender: Any!) {

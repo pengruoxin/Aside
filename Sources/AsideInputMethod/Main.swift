@@ -8,6 +8,7 @@ import AsideCore
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
             try RimeEngine.initialize()
+            _ = InputController.self
             server = IMKServer(name: "AsideInputMethod_Connection", bundleIdentifier: "io.github.pengruoxin.Aside.InputMethod")
         } catch {
             OfflineConfiguration.shared.status = error.localizedDescription

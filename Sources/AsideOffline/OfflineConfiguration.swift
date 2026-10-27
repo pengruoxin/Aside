@@ -4,19 +4,45 @@ import AsideCore
 
 @MainActor public final class OfflineConfiguration: ObservableObject {
     public static let shared = OfflineConfiguration()
-    @Published public var style: ExpressionStyle { didSet { UserDefaults.standard.set(style.rawValue, forKey: "imeStyle") } }
-    @Published public var englishOutput: Bool { didSet { UserDefaults.standard.set(englishOutput, forKey: "imeEnglishOutput") } }
-    @Published public var automatic: Bool { didSet { UserDefaults.standard.set(automatic, forKey: "imeAutomatic") } }
-    @Published public var paused = false
-    @Published public var engine: String { didSet { UserDefaults.standard.set(engine, forKey: "imeEngine") } }
+    private static let store = UserDefaults(suiteName: "io.github.pengruoxin.Aside.Shared")!
+    @Published public var style: ExpressionStyle { didSet { Self.store.set(style.rawValue, forKey: "imeStyle"); Self.changed() } }
+    @Published public var englishOutput: Bool { didSet { Self.store.set(englishOutput, forKey: "imeEnglishOutput"); Self.changed() } }
+    @Published public var automatic: Bool { didSet { Self.store.set(automatic, forKey: "imeAutomatic"); Self.changed() } }
+    @Published public var paused: Bool { didSet { Self.store.set(paused, forKey: "imePaused"); Self.changed() } }
+    @Published public var engine: String { didSet { Self.store.set(engine, forKey: "imeEngine"); Self.changed() } }
     @Published public var status = "离线输入法 · Control–Option–T 处理当前句子"
-    @Published public var customModel: String { didSet { UserDefaults.standard.set(customModel, forKey: "imeCustomModel") } }
+    @Published public var customModel: String { didSet { Self.store.set(customModel, forKey: "imeCustomModel"); Self.changed() } }
+    private var observer: NSObjectProtocol?
+    public static let notification = Notification.Name("io.github.pengruoxin.Aside.PreferencesChanged")
+    private static func changed() {
+        store.synchronize()
+        DistributedNotificationCenter.default().postNotificationName(notification, object: nil, userInfo: nil, deliverImmediately: true)
+    }
+    private func reload() {
+        Self.store.synchronize()
+        let nextStyle = ExpressionStyle(rawValue: Self.store.string(forKey: "imeStyle") ?? "") ?? .casual
+        if style != nextStyle { style = nextStyle }
+        let nextOutput = Self.store.bool(forKey: "imeEnglishOutput")
+        if englishOutput != nextOutput { englishOutput = nextOutput }
+        let nextAuto = Self.store.object(forKey: "imeAutomatic") as? Bool ?? true
+        if automatic != nextAuto { automatic = nextAuto }
+        let nextPaused = Self.store.bool(forKey: "imePaused")
+        if paused != nextPaused { paused = nextPaused }
+        let nextEngine = Self.store.string(forKey: "imeEngine") == "apple" ? "apple" : "bundled"
+        if engine != nextEngine { engine = nextEngine }
+        let nextModel = Self.store.string(forKey: "imeCustomModel") ?? ""
+        if customModel != nextModel { customModel = nextModel }
+    }
     private init() {
-        style = ExpressionStyle(rawValue: UserDefaults.standard.string(forKey: "imeStyle") ?? "") ?? .casual
-        englishOutput = UserDefaults.standard.bool(forKey: "imeEnglishOutput")
-        automatic = UserDefaults.standard.object(forKey: "imeAutomatic") as? Bool ?? true
-        engine = UserDefaults.standard.string(forKey: "imeEngine") == "apple" ? "apple" : "bundled"
-        customModel = UserDefaults.standard.string(forKey: "imeCustomModel") ?? ""
+        paused = Self.store.bool(forKey: "imePaused")
+        style = ExpressionStyle(rawValue: Self.store.string(forKey: "imeStyle") ?? "") ?? .casual
+        englishOutput = Self.store.bool(forKey: "imeEnglishOutput")
+        automatic = Self.store.object(forKey: "imeAutomatic") as? Bool ?? true
+        engine = Self.store.string(forKey: "imeEngine") == "apple" ? "apple" : "bundled"
+        customModel = Self.store.string(forKey: "imeCustomModel") ?? ""
+        observer = DistributedNotificationCenter.default().addObserver(forName: Self.notification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.reload() }
+        }
     }
 }
 

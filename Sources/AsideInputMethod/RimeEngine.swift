@@ -22,7 +22,11 @@ final class RimeEngine {
         initialized = true
     }
     init() { session = aside_rime_create() }
-    deinit { aside_rime_destroy(session) }
+    deinit {
+        let id = session
+        if Thread.isMainThread { aside_rime_destroy(id) }
+        else { DispatchQueue.main.async { aside_rime_destroy(id) } }
+    }
     var available: Bool { session != 0 }
     func process(_ key: Int32, modifiers: Int32 = 0) -> Bool { aside_rime_process(session, key, modifiers) != 0 }
     func select(_ index: Int) { _ = aside_rime_select(session, index) }

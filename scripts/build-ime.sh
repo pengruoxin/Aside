@@ -32,7 +32,7 @@ cmake -S .build-deps/llama -B .build-deps/llama/build \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 \
   -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON \
   -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=ON \
-  -DLLAMA_BUILD_APP=OFF -DLLAMA_BUILD_UI=OFF -DLLAMA_OPENSSL=OFF
+  -DLLAMA_BUILD_APP=OFF -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF -DLLAMA_OPENSSL=OFF
 cmake --build .build-deps/llama/build --config Release --target llama-server --parallel 3
 cp .build-deps/llama/build/bin/llama-server "$ime/Contents/Helpers/"
 cp .build-deps/llama/LICENSE "$ime/Contents/Resources/Licenses/llama.cpp-MIT.txt"
@@ -55,6 +55,7 @@ plutil -lint "$ime/Contents/Info.plist"
 codesign --force --sign - "$ime"
 codesign --verify --deep --strict "$ime"
 "$ime/Contents/MacOS/AsideInputMethod" --engine-smoke-test
+"$bin/AsideHostHarness"
 if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
   "$ime/Contents/MacOS/AsideInputMethod" --offline-smoke-test
 fi
