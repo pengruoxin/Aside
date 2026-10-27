@@ -1,0 +1,62 @@
+name: Native macOS build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: swift --version
+      - name: Unit tests and app bundle
+        run: bash scripts/build-macos.sh
+      - name: Native UI and undo smoke test
+        run: |
+          mkdir -p dist/ui
+          ASIDE_SMOKE_DIR="$PWD/dist/ui" dist/Aside.app/Contents/MacOS/Aside --ui-smoke-test
+        timeout-minutes: 2
+      - name: Build and verify DMG
+        run: bash scripts/package-dmg.sh
+      - name: Package app preserving permissions
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Aside.app dist/Aside-${{ runner.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Aside-${{ runner.arch }}
+          path: |
+            dist/Aside-*.zip
+            dist/Aside-*.dmg
+            dist/Aside-*.sha256
+            dist/ui/
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Aside-*
+          path: release-files
+          merge-multiple: true
+      - name: Publish preview release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test "$(find release-files -name '*.dmg' | wc -l)" -eq 2
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 release-files/*.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release-files/*.dmg release-files/*.sha256 release-files/*.zip \
+              --title "句外 Aside $GITHUB_REF_NAME · Mac 预览版" \
+              --notes-file docs/release-notes.md --prerelease
+          fi
