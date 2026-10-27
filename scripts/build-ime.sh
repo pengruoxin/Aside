@@ -56,6 +56,22 @@ codesign --force --sign - "$ime"
 codesign --verify --deep --strict "$ime"
 "$ime/Contents/MacOS/AsideInputMethod" --engine-smoke-test
 "$bin/AsideHostHarness"
+harness="$PWD/dist/AsideHostHarness.app"
+mkdir -p "$harness/Contents/MacOS"
+cp "$bin/AsideHostHarness" "$harness/Contents/MacOS/"
+cat > "$harness/Contents/Info.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>AsideHostHarness</string>
+<key>CFBundleIdentifier</key><string>io.github.pengruoxin.Aside.HostTests</string>
+<key>CFBundleName</key><string>Aside Host Tests</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+</dict></plist>
+EOF
+codesign --force --sign - "$harness"
+mkdir -p "$HOME/Library/Input Methods"
+ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
+"$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"
 if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
   "$ime/Contents/MacOS/AsideInputMethod" --offline-smoke-test
 fi

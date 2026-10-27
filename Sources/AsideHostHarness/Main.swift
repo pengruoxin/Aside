@@ -9,7 +9,9 @@ import AsideCore
         let app = NSApplication.shared
         Task { @MainActor in
             do {
-                if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--register" {
+                if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--live" {
+                    try await liveInput(URL(fileURLWithPath: CommandLine.arguments[2]))
+                } else if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--register" {
                     try await register(URL(fileURLWithPath: CommandLine.arguments[2]))
                 } else {
                     try await nativeText()
@@ -72,6 +74,7 @@ import AsideCore
         for _ in 0..<10 {
             let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
             let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+            for source in sources { _ = TISEnableInputSource(source) }
             let ids = sources.compactMap { input -> String? in
                 guard let value = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) else { return nil }
                 return unsafeBitCast(value, to: CFString.self) as String
@@ -84,5 +87,73 @@ import AsideCore
         }
         throw Failure.registration
     }
-    enum Failure: Error { case previewLeaked, noTextClient, registration }
+
+    @MainActor static func liveInput(_ bundle: URL) async throws {
+        try await register(bundle)
+        let original = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+        defer { if let original { _ = TISSelectInputSource(original) } }
+        let editor = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 130))
+        let window = NSWindow(contentRect: editor.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = editor
+        let delegate = SendDelegate()
+        editor.delegate = delegate
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(editor)
+        NSApp.activate(ignoringOtherApps: true)
+        try await selectMode(".Chinese")
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+        for char in "nihao" { try await send(String(char), window: window) }
+        try await send(" ", window: window)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        guard editor.string == "你好" else {
+            print("Live Chinese value:", editor.string)
+            throw Failure.liveChinese
+        }
+        try await send("\r", window: window)
+        guard delegate.submissions == ["你好"] else { throw Failure.returnWasNotForwarded }
+        try await selectMode(".English")
+        try await Task.sleep(nanoseconds: 500_000_000)
+        for char in "Hello." { try await send(String(char), window: window) }
+        try await send("\r", window: window)
+        guard delegate.submissions == ["你好", "Hello."] else { throw Failure.liveEnglish }
+        print("Actual installed IMK source: nihao+Space → 你好; Return submitted once; English mode passed.")
+        window.close()
+    }
+    @MainActor private static func selectMode(_ suffix: String) async throws {
+        let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
+        let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+        for source in sources {
+            if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),
+               (unsafeBitCast(value, to: CFString.self) as String).hasSuffix(suffix) {
+                guard TISSelectInputSource(source) == noErr else { throw Failure.registration }
+                return
+            }
+        }
+        throw Failure.registration
+    }
+    @MainActor private static func send(_ text: String, window: NSWindow) async throws {
+        let codes: [String: UInt16] = ["a":0, "s":1, "d":2, "f":3, "h":4, "g":5, "z":6, "x":7, "c":8, "v":9,
+            "b":11, "q":12, "w":13, "e":14, "r":15, "y":16, "t":17, "o":31, "u":32, "i":34, "p":35,
+            "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36]
+        let uppercase = text != text.lowercased()
+        let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: uppercase ? .shift : [],
+                                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                    context: nil, characters: text, charactersIgnoringModifiers: text.lowercased(),
+                                    isARepeat: false, keyCode: codes[text.lowercased()] ?? 0)!
+        NSApp.sendEvent(event)
+        try await Task.sleep(nanoseconds: 80_000_000)
+    }
+    @MainActor private final class SendDelegate: NSObject, NSTextViewDelegate {
+        var submissions: [String] = []
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                submissions.append(textView.string)
+                textView.string = ""
+                return true
+            }
+            return false
+        }
+    }
+    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded }
 }
