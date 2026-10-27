@@ -30,6 +30,7 @@ import AsideCore
                 try RimeEngine.initialize()
                 let engine = RimeEngine()
                 for scalar in "nihao".unicodeScalars { _ = engine.process(Int32(scalar.value)) }
+                print("Fixture preedit: \(engine.context.preedit); candidates: \(engine.context.candidates)")
                 guard engine.context.candidates.contains("你好") else { throw SmokeError.noChineseCandidate }
                 if let index = engine.context.candidates.firstIndex(of: "你好") { engine.select(index) }
                 guard engine.takeCommit() == "你好" else { throw SmokeError.wrongCommit }

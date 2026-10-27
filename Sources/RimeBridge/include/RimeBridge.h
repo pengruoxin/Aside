@@ -15,6 +15,7 @@ uintptr_t aside_rime_create(void);
 void aside_rime_destroy(uintptr_t session);
 int aside_rime_process(uintptr_t session, int key, int modifiers);
 int aside_rime_select(uintptr_t session, size_t index);
+void aside_rime_highlight(uintptr_t session, size_t index);
 void aside_rime_commit(uintptr_t session);
 void aside_rime_clear(uintptr_t session);
 char *aside_rime_take_commit(uintptr_t session);

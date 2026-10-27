@@ -26,6 +26,7 @@ final class RimeEngine {
     var available: Bool { session != 0 }
     func process(_ key: Int32, modifiers: Int32 = 0) -> Bool { aside_rime_process(session, key, modifiers) != 0 }
     func select(_ index: Int) { _ = aside_rime_select(session, index) }
+    func highlight(_ index: Int) { aside_rime_highlight(session, index) }
     func clear() { aside_rime_clear(session) }
     func commit() { aside_rime_commit(session) }
     func takeCommit() -> String? {

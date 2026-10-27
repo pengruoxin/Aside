@@ -17,7 +17,9 @@ cp Resources/InfoPlist.strings "$ime/Contents/Resources/zh-Hans.lproj/"
 cp Resources/InfoPlist.strings "$ime/Contents/Resources/en.lproj/"
 dict_ref=56b934b099dfbeab842320f13aa8b461a6ab3e42
 curl --fail --location --retry 3 "https://raw.githubusercontent.com/rime/rime-luna-pinyin/$dict_ref/luna_pinyin.dict.yaml" -o "$ime/Contents/Resources/RimeData/luna_pinyin.dict.yaml"
-sed -i '' 's/use_preset_vocabulary: true/use_preset_vocabulary: false/' "$ime/Contents/Resources/RimeData/luna_pinyin.dict.yaml"
+essay_ref=054920de4f54c9e5994276a96a4fc2a35cb51aa3
+curl --fail --location --retry 3 "https://raw.githubusercontent.com/rime/rime-essay/$essay_ref/essay.txt" -o "$ime/Contents/Resources/RimeData/essay.txt"
+curl --fail --location --retry 3 "https://raw.githubusercontent.com/rime/rime-essay/$essay_ref/LICENSE" -o "$ime/Contents/Resources/Licenses/RimeEssay-LGPL-3.0.txt"
 curl --fail --location --retry 3 "https://raw.githubusercontent.com/rime/rime-luna-pinyin/$dict_ref/LICENSE" -o "$ime/Contents/Resources/Licenses/LunaPinyin-LGPL-3.0.txt"
 curl --fail --location --retry 3 "https://raw.githubusercontent.com/rime/librime/87467217b456780f9217f41df271c5dd6aa37d00/LICENSE" -o "$ime/Contents/Resources/Licenses/librime-BSD.txt"
 mkdir -p .build-deps/rime-user "$ime/Contents/Resources/RimeData/build"

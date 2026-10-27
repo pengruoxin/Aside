@@ -49,6 +49,9 @@ int aside_rime_select(uintptr_t session, size_t index) {
     if (!api || !session) return 0;
     return api->select_candidate_on_current_page(session, index);
 }
+void aside_rime_highlight(uintptr_t session, size_t index) {
+    if (api && session) api->highlight_candidate_on_current_page(session, index);
+}
 void aside_rime_commit(uintptr_t session) { if (api && session) api->commit_composition(session); }
 void aside_rime_clear(uintptr_t session) { if (api && session) api->clear_composition(session); }
 char *aside_rime_take_commit(uintptr_t session) {

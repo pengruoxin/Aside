@@ -24,6 +24,18 @@ engine:
 speller:
   alphabet: abcdefghijklmnopqrstuvwxyz
   delimiter: " '"
+  algebra:
+    - "derive/^([nl])ue$/$1ve/"
+    - "abbrev/^([a-z]).+$/$1/"
+    - "abbrev/^([zcs]h).+$/$1/"
+ascii_composer:
+  good_old_caps_lock: true
+  switch_key:
+    Caps_Lock: noop
+    Shift_L: noop
+    Shift_R: noop
+    Control_L: noop
+    Control_R: noop
 translator:
   dictionary: luna_pinyin
   enable_user_dict: true

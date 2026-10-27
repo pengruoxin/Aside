@@ -12,17 +12,25 @@ import AsideOffline
     private var englishMode = false
     private var generation: Task<Void, Never>?
     private var modeID = ""
-    private lazy var panel = IMKCandidates(server: server(), panelType: kIMKSingleRowSteppingCandidatePanel)
+    private var hasMarkedText = false
+    private lazy var panel: IMKCandidates? = {
+        let panel = IMKCandidates(server: server(), panelType: kIMKSingleRowSteppingCandidatePanel)
+        panel?.setAttributes([IMKCandidatesSendServerKeyEventFirst: NSNumber(value: true)])
+        return panel
+    }()
 
     override func recognizedEvents(_ sender: Any!) -> Int { Int(NSEvent.EventTypeMask.keyDown.rawValue) }
 
     override func activateServer(_ sender: Any!) {
         MainActor.assumeIsolated {
+            if active { commitOriginal() }
             generation?.cancel()
             composition.reset()
+            hasMarkedText = false
             target = sender as? IMKTextInput
             active = true
             if rime == nil { rime = RimeEngine() }
+            rime?.clear()
             updateMode()
         }
     }
@@ -56,7 +64,9 @@ import AsideOffline
             composition.reset()
         }
         target = client
+        let oldMode = englishMode
         updateMode()
+        if oldMode != englishMode { commitOriginal() }
         let key = event.charactersIgnoringModifiers ?? ""
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains([.control, .option]), key.lowercased() == "t" {
@@ -70,7 +80,12 @@ import AsideOffline
         }
         let context = rime?.context ?? RimeEngine.Context()
         let composingPinyin = !englishMode && !context.preedit.isEmpty
+        if composingPinyin && [123, 124, 125, 126].contains(event.keyCode) {
+            // Native candidate UI owns navigation and reports its highlighted string below.
+            return false
+        }
         if event.keyCode == 53 { // Escape: dismiss learning first; never throw away selected words.
+            if !composingPinyin && composition.source.isEmpty { return false }
             generation?.cancel()
             if composingPinyin { rime?.clear(); composition.invalidate(); refresh() }
             else if composition.preview != nil { composition.invalidate(); refresh() }
@@ -80,6 +95,12 @@ import AsideOffline
         if event.keyCode == 48, !composingPinyin, composition.preview != nil,
            OfflineConfiguration.shared.englishOutput {
             adoptEnglish()
+            return true
+        }
+        if event.keyCode == 48, composingPinyin {
+            if let rime, rime.process(0xff09) { consumeCommit() }
+            else { confirmPinyin() }
+            refresh()
             return true
         }
         if event.keyCode == 36 || event.keyCode == 76 {
@@ -111,12 +132,17 @@ import AsideOffline
             return true
         }
         guard let chars = event.characters, !chars.isEmpty else { return false }
+        let functionKey = chars.unicodeScalars.contains { (0xF700...0xF8FF).contains($0.value) }
+        if functionKey && !composingPinyin {
+            commitOriginal()
+            return false
+        }
         if composition.preview != nil {
             // New typing starts a new sentence; only the original is committed.
             commitOriginal()
         }
         if !englishMode, let rime, rime.available {
-            let special: [UInt16: Int32] = [123: 0xff51, 124: 0xff53, 125: 0xff54, 126: 0xff52, 116: 0xff55, 121: 0xff56]
+            let special: [UInt16: Int32] = [123: 0xff51, 124: 0xff53, 125: 0xff54, 126: 0xff52, 116: 0xff55, 121: 0xff56, 117: 0xffff]
             let value = special[event.keyCode] ?? chars.unicodeScalars.first.map { Int32($0.value) } ?? 0
             if rime.process(value, modifiers: flags.contains(.shift) ? 1 : 0) {
                 consumeCommit()
@@ -126,6 +152,10 @@ import AsideOffline
                 return true
             }
             confirmPinyin()
+        }
+        if functionKey || chars.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) && $0.value != 32 }) {
+            commitOriginal()
+            return false
         }
         let punctuation = [",": "，", ".": "。", "?": "？", "!": "！", ":": "：", ";": "；"]
         let text = englishMode ? chars : (punctuation[chars] ?? chars)
@@ -157,9 +187,10 @@ import AsideOffline
         panel?.hide()
         if !original.isEmpty {
             target?.insertText(original, replacementRange: NSRange(location: NSNotFound, length: 0))
-        } else {
+        } else if hasMarkedText {
             target?.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         }
+        hasMarkedText = false
     }
     @MainActor private func adoptEnglish() {
         generation?.cancel()
@@ -167,6 +198,7 @@ import AsideOffline
         rime?.clear()
         panel?.hide()
         target?.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        hasMarkedText = false
     }
     @MainActor private func refresh() {
         guard active, let target else { return }
@@ -181,6 +213,7 @@ import AsideOffline
         let prefix = String(decoding: preedit.utf8.prefix(max(0, context.cursor)), as: UTF8.self)
         let cursor = composition.source.utf16.count + (preedit.isEmpty ? 0 : prefix.utf16.count)
         target.setMarkedText(marked, selectionRange: NSRange(location: cursor, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        hasMarkedText = !text.isEmpty
         if !preedit.isEmpty, !context.candidates.isEmpty {
             panel?.setSelectionKeys([18, 19, 20, 21, 23, 22, 26].map { NSNumber(value: $0) })
             panel?.update()
@@ -238,6 +271,15 @@ import AsideOffline
                 else if let explanation = composition.preview?.explanation {
                     panel?.showAnnotation(NSAttributedString(string: explanation))
                 }
+            }
+        }
+    }
+    override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
+        MainActor.assumeIsolated {
+            guard let text = candidateString?.string else { return }
+            let context = rime?.context ?? RimeEngine.Context()
+            if !englishMode, !context.preedit.isEmpty, let index = context.candidates.firstIndex(of: text) {
+                rime?.highlight(index)
             }
         }
     }
