@@ -48,8 +48,8 @@ import AsideCore
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         web.loadHTMLString("<html><body><input id='search' type='search'><textarea id='chat'></textarea></body></html>", baseURL: nil)
-        for _ in 0..<30 {
-            if (try? await web.evaluateJavaScript("document.readyState")) as? String == "complete" { break }
+        for _ in 0..<60 {
+            if (try? await web.evaluateJavaScript("document.getElementById('search') !== null")) as? Bool == true { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         for field in ["search", "chat"] {

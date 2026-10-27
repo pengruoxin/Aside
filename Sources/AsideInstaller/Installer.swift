@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import Carbon
 import AsideOffline
+import AsideCore
 
 @MainActor final class Installation: ObservableObject {
     @Published var busy = false
@@ -17,31 +18,47 @@ import AsideOffline
                 let parent = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Input Methods", isDirectory: true)
                 let destination = parent.appendingPathComponent("Aside.app")
                 try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-                if FileManager.default.fileExists(atPath: destination.path) {
-                    guard Bundle(url: destination)?.bundleIdentifier == "io.github.pengruoxin.Aside.InputMethod" else { throw InstallError.otherApplication }
-                    let backup = OfflinePaths.support.appendingPathComponent("Backups/" + UUID().uuidString + "/Aside.app")
-                    try FileManager.default.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
-                    try FileManager.default.moveItem(at: destination, to: backup)
+                if let current = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+                   let value = TISGetInputSourceProperty(current, kTISPropertyBundleID),
+                   (unsafeBitCast(value, to: CFString.self) as String) == "io.github.pengruoxin.Aside.InputMethod" {
+                    throw InstallError.inputMethodActive
                 }
-                try await Task.detached(priority: .userInitiated) { try FileManager.default.copyItem(at: source, to: destination) }.value
+                let backupRoot = OfflinePaths.support.appendingPathComponent("Backups", isDirectory: true)
+                let backup = try await Task.detached(priority: .userInitiated) {
+                    try InstallTransaction.install(source: source, destination: destination, backupRoot: backupRoot,
+                                                   identifier: "io.github.pengruoxin.Aside.InputMethod", validate: { staged in
+                        let check = Process()
+                        check.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+                        check.arguments = ["--verify", "--deep", "--strict", staged.path]
+                        check.standardOutput = FileHandle.nullDevice
+                        check.standardError = FileHandle.nullDevice
+                        try check.run()
+                        check.waitUntilExit()
+                        if check.terminationStatus != 0 { throw InstallError.invalidSignature }
+                    })
+                }.value
                 guard TISRegisterInputSource(destination as CFURL) == noErr else { throw InstallError.registrationFailed }
                 let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
                 let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
                 for input in sources { _ = TISEnableInputSource(input) }
                 guard !sources.isEmpty else { throw InstallError.registrationFailed }
                 installed = true
-                message = "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请注销后重新登录，再在键盘设置添加。"
+                message = backup == nil
+                    ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请注销后重新登录，再在键盘设置添加。"
+                    : "升级完成，旧版已备份。请先注销并重新登录，让 macOS 加载新版本，再切换到句外输入法。"
             } catch { message = error.localizedDescription }
             busy = false
         }
     }
     enum InstallError: LocalizedError {
-        case payloadMissing, otherApplication, registrationFailed
+        case payloadMissing, otherApplication, registrationFailed, inputMethodActive, invalidSignature
         var errorDescription: String? {
             switch self {
             case .payloadMissing: return "安装包不完整，请重新下载完整版 DMG。"
             case .otherApplication: return "目标位置存在其他应用，未作覆盖。请手动检查 ~/Library/Input Methods/Aside.app。"
             case .registrationFailed: return "输入法已复制，请注销后重新登录，并在系统设置 → 键盘 → 输入法中添加句外。"
+            case .inputMethodActive: return "请先用系统输入源菜单切换到 ABC 或苹果拼音，再重新安装句外。"
+            case .invalidSignature: return "输入法包的完整性检查未通过，原有输入法未被替换。请重新下载。"
             }
         }
     }

@@ -11,6 +11,7 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
     private var process: Process?
     private var startup: Task<(Int, String), Error>?
     private var endpoint: (Int, String)?
+    private var startupID = UUID()
     private var lastUsed = Date()
     private var idle: Timer?
     private init() {
@@ -22,6 +23,7 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
         }
     }
     public func stop() {
+        startupID = UUID()
         startup?.cancel()
         startup = nil
         process?.terminate()
@@ -32,8 +34,13 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
         lastUsed = Date()
         if let endpoint, process?.isRunning == true { return endpoint }
         if let startup { return try await startup.value }
+        endpoint = nil
+        let currentID = UUID()
+        startupID = currentID
         let task = Task { @MainActor [weak self] () throws -> (Int, String) in
+            try Task.checkCancellation()
             guard let self, let model = OfflinePaths.model else { throw OfflineError.modelMissing }
+            guard self.startupID == currentID else { throw CancellationError() }
             guard let executable = OfflinePaths.executable else { throw OfflineError.runtimeUnavailable }
             let port = Int.random(in: 20000...60000)
             let key = UUID().uuidString + UUID().uuidString
@@ -54,6 +61,7 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
                 var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/health")!)
                 request.timeoutInterval = 1
                 if let (_, response) = try? await session.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200 {
+                    guard self.startupID == currentID, self.process === child else { child.terminate(); throw CancellationError() }
                     self.endpoint = (port, key)
                     return (port, key)
                 }
@@ -63,8 +71,14 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             throw OfflineError.startupFailed
         }
         startup = task
-        do { let result = try await task.value; startup = nil; return result }
-        catch { startup = nil; process?.terminate(); process = nil; endpoint = nil; throw error }
+        do {
+            let result = try await task.value
+            if startupID == currentID { startup = nil }
+            return result
+        } catch {
+            if startupID == currentID { startup = nil; process?.terminate(); process = nil; endpoint = nil }
+            throw error
+        }
     }
     public func generate(_ writing: WritingRequest) async throws -> WritingResult {
         guard writing.source.count <= 600 else { throw OfflineError.inputTooLong }

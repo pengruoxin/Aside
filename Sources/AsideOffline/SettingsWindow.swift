@@ -93,6 +93,13 @@ public struct OfflineSettingsView: View {
         panel.allowedContentTypes = [UTType(filenameExtension: "gguf") ?? .data]
         panel.message = "选择可信来源的 GGUF 离线模型。文件将在本机读取，不会上传。"
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let file = try FileHandle(forReadingFrom: url)
+            defer { try? file.close() }
+            guard try file.read(upToCount: 4) == Data("GGUF".utf8) else {
+                result = "所选文件不是有效 GGUF 文件。"; return
+            }
+        } catch { result = error.localizedDescription; return }
         settings.customModel = url.path
         RuntimeManager.shared.stop()
         result = "已选择本机模型；请测试是否与推理引擎兼容。"

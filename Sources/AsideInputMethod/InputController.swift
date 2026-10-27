@@ -81,8 +81,9 @@ import AsideOffline
         if oldMode != englishMode { commitOriginal() }
         let key = event.charactersIgnoringModifiers ?? ""
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags.contains([.control, .option]), key.lowercased() == "t" {
+        if flags.intersection([.command, .control, .option, .shift]) == [.control, .option], key.lowercased() == "t" {
             confirmPinyin()
+            refresh()
             requestTranslation(manual: true)
             return true
         }
@@ -104,7 +105,7 @@ import AsideOffline
             else { commitOriginal() }
             return true
         }
-        if event.keyCode == 48, !composingPinyin, composition.preview != nil,
+        if event.keyCode == 48, !flags.contains(.shift), !composingPinyin, composition.preview != nil,
            OfflineConfiguration.shared.englishOutput {
             adoptEnglish()
             return true
@@ -312,7 +313,7 @@ import AsideOffline
             return menu
         }
     }
-    @objc private func translateNow() { MainActor.assumeIsolated { confirmPinyin(); requestTranslation(manual: true) } }
+    @objc private func translateNow() { MainActor.assumeIsolated { confirmPinyin(); refresh(); requestTranslation(manual: true) } }
     @objc private func openSettings() {
         MainActor.assumeIsolated {
             commitOriginal()
