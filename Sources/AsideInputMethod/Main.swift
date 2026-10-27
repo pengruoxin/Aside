@@ -46,6 +46,8 @@ import AsideCore
                     OfflineConfiguration.shared.engine = "bundled"
                     for source in ["我们可以先试一下。", "This method could work."] {
                         let result = try await OfflineTranslator.generate(.init(source: source, style: .academic))
+                        print("Offline fixture expression:", result.expression)
+                        print("Offline fixture explanation:", result.explanation)
                         guard SentencePolicy.language(of: result.expression) == .english,
                               SentencePolicy.language(of: result.explanation) == .chinese else { throw SmokeError.invalidOfflineOutput }
                         print("Offline \(SentencePolicy.language(of: source).rawValue) translation/rewrite and Chinese explanation passed.")
