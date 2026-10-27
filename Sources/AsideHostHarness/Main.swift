@@ -32,6 +32,24 @@ import AsideOffline
     @MainActor static func systemProbe() async throws {
         let original = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
         defer { if let original { _ = TISSelectInputSource(original) } }
+        let editor = NSTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 100))
+        let window = NSWindow(contentRect: editor.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = editor
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(editor)
+        NSApp.activate(ignoringOtherApps: true)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        editor.inputContext?.activate()
+        let parentQuery = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM"] as CFDictionary
+        let parents = TISCreateInputSourceList(parentQuery, true).takeRetainedValue() as! [TISInputSource]
+        for parent in parents {
+            print("Control Apple Pinyin parent enable:", TISEnableInputSource(parent))
+            if let raw = TISGetInputSourceProperty(parent, kTISPropertyInputSourceIsEnabled) {
+                print("Control Apple Pinyin parent enabled:", CFBooleanGetValue(unsafeBitCast(raw, to: CFBoolean.self)))
+            }
+        }
         let query = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM.ITABC"] as CFDictionary
         let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
         for source in sources {
