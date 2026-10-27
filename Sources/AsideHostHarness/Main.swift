@@ -84,6 +84,14 @@ import AsideCore
             for source in sources {
                 let status = TISEnableInputSource(source)
                 print("Enable source status:", status)
+                for key in [kTISPropertyInputSourceID, kTISPropertyInputSourceType, kTISPropertyInputModeID] {
+                    if let value = TISGetInputSourceProperty(source, key) {
+                        print(key, unsafeBitCast(value, to: CFString.self) as String)
+                    }
+                }
+                if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) {
+                    print("After enable:", CFBooleanGetValue(unsafeBitCast(value, to: CFBoolean.self)))
+                }
             }
             let ids = sources.compactMap { input -> String? in
                 guard let value = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) else { return nil }
@@ -111,6 +119,11 @@ import AsideCore
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(editor)
         NSApp.activate(ignoringOtherApps: true)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        editor.inputContext?.activate()
+        if let original {
+            print("Current system input source selection:", TISSelectInputSource(original))
+        }
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 2_000_000_000)
         for char in "nihao" { try await send(String(char), window: window) }
