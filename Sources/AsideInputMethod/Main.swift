@@ -39,6 +39,9 @@ import AsideCore
                 guard engine.context.candidates.contains("你好") else { throw SmokeError.noChineseCandidate }
                 if let index = engine.context.candidates.firstIndex(of: "你好") { engine.select(index) }
                 guard engine.takeCommit() == "你好" else { throw SmokeError.wrongCommit }
+                for scalar in "nihao".unicodeScalars { _ = engine.process(Int32(scalar.value)) }
+                engine.commit()
+                guard engine.takeCommit() == "你好" else { throw SmokeError.wrongCommit }
                 print("Rime nihao → 你好 passed; source and preview isolation covered by Swift tests.")
                 exit(0)
             } catch { fputs("Engine smoke failed: \(error)\n", stderr); exit(1) }

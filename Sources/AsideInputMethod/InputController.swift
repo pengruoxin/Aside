@@ -119,9 +119,10 @@ import AsideOffline
         if event.keyCode == 36 || event.keyCode == 76 {
             if composingPinyin {
                 // First Return confirms composition, not sending a message.
-                if let rime, rime.process(0xff0d) {
-                    consumeCommit(); refresh()
-                } else { confirmPinyin(); refresh() }
+                // Rime ExpressEditor binds Return to raw Latin input. Commit
+                // the current Chinese conversion explicitly for Mac behavior.
+                confirmPinyin()
+                refresh()
                 return true
             }
             commitOriginal()
