@@ -35,10 +35,15 @@ jobs:
         if: env.ASIDE_INCLUDE_MODEL == '1'
         run: bash scripts/package-dmg.sh
       - name: Build record
+        if: always()
         run: |
+          mkdir -p dist/smoke
           swift --version > dist/build-status.txt
           echo "InputMethodKit / Rime / offline runtime; no independent editor." >> dist/build-status.txt
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name '*AsideHostHarness*' -exec cp {} dist/smoke/ \; || true
+          python3 scripts/crash-summary.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: AsideInputMethod-ARM64
           path: |

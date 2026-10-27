@@ -1,11 +1,13 @@
 import AppKit
 import WebKit
 import Carbon
+import Darwin
 import AsideCore
 
 /// CI-only host controls. This executable is not included in the installer.
 @main enum HostHarness {
     @MainActor static func main() {
+        setbuf(stdout, nil)
         let app = NSApplication.shared
         Task { @MainActor in
             do {
@@ -70,10 +72,15 @@ import AsideCore
     }
 
     @MainActor static func register(_ bundle: URL) async throws {
-        guard TISRegisterInputSource(bundle as CFURL) == noErr else { throw Failure.registration }
+        print("Registering input method metadata:", bundle.lastPathComponent)
+        let registration = TISRegisterInputSource(bundle as CFURL)
+        print("TISRegisterInputSource status:", registration)
+        guard registration == noErr else { throw Failure.registration }
         for _ in 0..<10 {
             let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.Aside.InputMethod"] as CFDictionary
-            let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+            let raw = TISCreateInputSourceList(query, true).takeRetainedValue()
+            print("TIS input source count:", CFArrayGetCount(raw))
+            let sources = (0..<CFArrayGetCount(raw)).map { unsafeBitCast(CFArrayGetValueAtIndex(raw, $0), to: TISInputSource.self) }
             for source in sources { _ = TISEnableInputSource(source) }
             let ids = sources.compactMap { input -> String? in
                 guard let value = TISGetInputSourceProperty(input, kTISPropertyInputSourceID) else { return nil }
