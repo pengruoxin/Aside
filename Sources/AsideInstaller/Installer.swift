@@ -73,8 +73,8 @@ struct InstallerView: View {
             Label("不自动发送，不把学习提示混入正文", systemImage: "checkmark.shield")
             Divider()
             Text("安装后使用 macOS 输入源菜单切换。空格与数字选词；Return 先确认组合，再交给百度搜索或微信发送。句末给出英文候选，无标点时按 Control–Option–T。")
-                .font(.callout).foregroundStyle(.secondary)
-            Text(installation.message).font(.callout).textSelection(.enabled)
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(installation.message).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if installation.busy { ProgressView().controlSize(.small) }
             HStack {
                 Button("离线模型与设置…") { SettingsWindow.shared.show() }
@@ -83,7 +83,7 @@ struct InstallerView: View {
                     .buttonStyle(.borderedProminent).disabled(installation.busy)
             }
             Text("适用于 Apple Silicon / macOS 26+ · 0.3.0 输入法测试版\n未完成 Apple Developer ID 签名与公证。实际百度、微信兼容性仍需验收。")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(32).frame(width: 590).tint(Color(red: 0.30, green: 0.42, blue: 0.34))
             .onAppear { InstallerScreenshots.runIfRequested(); InstallerSmoke.runIfRequested() }
     }

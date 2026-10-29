@@ -228,6 +228,8 @@ import AsideOffline
         let context = rime?.context ?? RimeEngine.Context()
         let preedit = englishMode ? "" : context.preedit
         let text = composition.hostMarkedText(preedit: preedit)
+        // An empty refresh must not replace a host selection we do not own.
+        guard !text.isEmpty || hasMarkedText else { panel?.hide(); return }
         let marked = NSMutableAttributedString(string: text)
         if !preedit.isEmpty {
             marked.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue,

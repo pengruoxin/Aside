@@ -200,6 +200,17 @@ import AsideOffline
         for char in "Hello." { try await send(String(char), window: window) }
         try await send("\r", window: window)
         guard delegate.submissions == ["你好", "Hello."] else { throw Failure.liveEnglish }
+        editor.string = "Keep this selection."
+        editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
+        let oldStyle = OfflineConfiguration.shared.style
+        OfflineConfiguration.shared.style = oldStyle == .casual ? .academic : .casual
+        try await Task.sleep(nanoseconds: 400_000_000)
+        guard editor.string == "Keep this selection." else { throw Failure.hostSelectionChanged }
+        OfflineConfiguration.shared.style = oldStyle
+        try await Task.sleep(nanoseconds: 200_000_000)
+        guard editor.string == "Keep this selection." else { throw Failure.hostSelectionChanged }
+        editor.string = ""
+        print("Style changes preserved host-selected text outside the IME composition.")
         print("Actual installed IMK source: nihao+Space → 你好; Return submitted once; English mode passed.")
         if CommandLine.arguments.contains("--offline-input") {
             try await offlineInput(editor: editor, window: window, delegate: delegate)
@@ -316,5 +327,5 @@ import AsideOffline
             return false
         }
     }
-    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl, wrongInstalledBundle, offlinePreview, liveWebInput }
+    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl, wrongInstalledBundle, offlinePreview, liveWebInput, hostSelectionChanged }
 }

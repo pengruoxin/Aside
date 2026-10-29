@@ -11,6 +11,7 @@
 <key>CFBundleIconFile</key><string>Aside</string>
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>LSUIElement</key><true/>
+<key>NSHighResolutionCapable</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>TISInputSourceID</key><string>io.github.pengruoxin.inputmethod.Aside</string>

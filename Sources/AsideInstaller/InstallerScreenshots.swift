@@ -27,6 +27,9 @@ import AsideOffline
     }
 
     private static func capture(_ window: NSWindow, to destination: URL) async throws {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        try await Task.sleep(nanoseconds: 300_000_000)
         // WindowGroup uses layer-backed hosting; cacheDisplay can return an
         // empty bitmap even when the window is visible. Capture this app's
         // own composited window instead, including the actual native controls.
@@ -39,17 +42,6 @@ import AsideOffline
         let bitmap = try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(desktopIndependentWindow: visible), configuration: configuration)
         let image = NSBitmapImageRep(cgImage: bitmap)
         guard let png = image.representation(using: .png, properties: [:]), png.count > 5000 else { throw CaptureError.emptyView }
-        try png.write(to: destination, options: .atomic)
-    }
-
-    private static func captureView(_ window: NSWindow, to destination: URL) throws {
-        guard let view = window.contentView else { throw CaptureError.noWindow }
-        view.layoutSubtreeIfNeeded()
-        view.displayIfNeeded()
-        guard view.bounds.width >= 500, view.bounds.height >= 300,
-              let image = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw CaptureError.emptyView }
-        view.cacheDisplay(in: view.bounds, to: image)
-        guard let png = image.representation(using: .png, properties: [:]) else { throw CaptureError.emptyView }
         try png.write(to: destination, options: .atomic)
     }
 
