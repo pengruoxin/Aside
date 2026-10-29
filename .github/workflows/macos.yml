@@ -15,6 +15,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 40
     env:
+      ASIDE_CPU_ONLY: '1'
       ASIDE_INCLUDE_MODEL: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.full_offline == true) && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4

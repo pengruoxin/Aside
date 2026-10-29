@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ "$(uname -s)" == Darwin ]] || { echo "macOS required"; exit 1; }
+if [[ "${ASIDE_CPU_ONLY:-0}" == 1 ]]; then launchctl setenv ASIDE_CPU_ONLY 1; fi
 export RIME_PREFIX="$(brew --prefix librime)"
 mkdir -p .build-deps dist
 swift test

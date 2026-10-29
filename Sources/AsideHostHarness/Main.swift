@@ -228,6 +228,7 @@ import AsideOffline
         web.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
         let observer = BaiduNavigation()
         web.navigationDelegate = observer
+        web.uiDelegate = observer
         let window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "句外输入法 · 百度实际页面验证"
@@ -251,6 +252,7 @@ import AsideOffline
         try await Task.sleep(nanoseconds: 700_000_000)
         window.makeFirstResponder(web)
         _ = try await web.evaluateJavaScript(focus)
+        _ = try await web.evaluateJavaScript("window.asideKeys=[];for(const name of ['keydown','keyup','compositionstart','compositionend'])document.addEventListener(name,e=>asideKeys.push([e.type,e.key,e.keyCode,e.isComposing]),true)")
         print("Baidu focused element:", try await web.evaluateJavaScript("document.activeElement.tagName+'#'+document.activeElement.id"))
         for character in "nihao " { try await send(String(character), window: window) }
         let value = try await web.evaluateJavaScript("window.asideProbeField.value") as? String
@@ -262,7 +264,21 @@ import AsideOffline
             if observer.searches > 0 { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        guard observer.searches == 1 else { throw Failure.liveBaidu }
+        if observer.searches != 1 {
+            print("Baidu Aside event diagnostics:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
+            let query = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM.ITABC"] as CFDictionary
+            let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
+            guard let apple = sources.first, TISSelectInputSource(apple) == noErr else { throw Failure.liveBaidu }
+            _ = try await web.evaluateJavaScript(focus)
+            _ = try await web.evaluateJavaScript("window.asideKeys=[]")
+            try await Task.sleep(nanoseconds: 700_000_000)
+            for character in "nihao " { try await send(String(character), window: window) }
+            try await send("\r", window: window)
+            try await Task.sleep(nanoseconds: 1_000_000_000)
+            print("Baidu Apple event diagnostics:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
+            print("Baidu Apple control observed searches:", observer.searches)
+            throw Failure.liveBaidu
+        }
         try baiduReport("PASS: actual https://www.baidu.com/ in WebKit accepted IMK Chinese input and one Return search for 你好. Navigation was cancelled after observing the search request.")
     }
 
@@ -273,12 +289,20 @@ import AsideOffline
         }
     }
 
-    @MainActor private final class BaiduNavigation: NSObject, WKNavigationDelegate {
+    @MainActor private final class BaiduNavigation: NSObject, WKNavigationDelegate, WKUIDelegate {
         var searches = 0
+        private func search(_ url: URL?) -> Bool {
+            guard let url else { return false }
+            return URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { ["wd", "word", "q", "query"].contains($0.name) && $0.value == "你好" }) == true
+        }
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                     for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            if search(navigationAction.request.url) { searches += 1 }
+            return nil
+        }
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            if let url = navigationAction.request.url,
-               URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { ["wd", "word", "q", "query"].contains($0.name) && $0.value == "你好" }) == true {
+            if search(navigationAction.request.url) {
                 searches += 1
                 decisionHandler(.cancel)
             } else { decisionHandler(.allow) }

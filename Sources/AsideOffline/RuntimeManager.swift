@@ -46,9 +46,12 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             let port = Int.random(in: 20000...60000)
             let key = UUID().uuidString + UUID().uuidString
             let child = Process()
+            // CI virtual GPUs can be much slower than CPU inference. Normal
+            // installations retain Metal acceleration; this also tests CPU fallback.
+            let gpuLayers = ProcessInfo.processInfo.environment["ASIDE_CPU_ONLY"] == "1" ? "0" : "99"
             child.executableURL = launcher
             child.arguments = [executable.path, "--model", model.path, "--host", "127.0.0.1", "--port", String(port), "--ctx-size", "4096",
-                               "--parallel", "1", "--threads", "4", "--n-gpu-layers", "99", "--no-webui"]
+                               "--parallel", "1", "--threads", "4", "--n-gpu-layers", gpuLayers, "--no-webui"]
             child.environment = ["PATH": "/usr/bin:/bin", "HOME": NSHomeDirectory(), "LLAMA_API_KEY": key]
             child.standardOutput = FileHandle.nullDevice
             // Diagnostics are restricted to the fixed CI fixtures, never user input.
