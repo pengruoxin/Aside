@@ -99,9 +99,9 @@ defaults read com.apple.inputsources AppleEnabledThirdPartyInputSources
 killall TextInputMenuAgent 2>/dev/null || true
 killall imklaunchagent 2>/dev/null || true
 sleep 2
-extra_flags=()
-if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then extra_flags+=(--offline-input); fi
-if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app" "${extra_flags[@]}"; then
+extra_flag=--base-input
+if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then extra_flag=--offline-input; fi
+if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app" "$extra_flag"; then
   cat dist/smoke/ime-events.txt || true
   /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
   exit 1
