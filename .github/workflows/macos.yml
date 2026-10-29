@@ -46,7 +46,7 @@ jobs:
           mkdir -p dist/smoke
           swift --version > dist/build-status.txt
           echo "InputMethodKit / Rime / offline runtime; no independent editor." >> dist/build-status.txt
-          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name '*AsideHostHarness*' -exec cp {} dist/smoke/ \; || true
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name '*Aside*' -exec cp {} dist/smoke/ \; || true
           python3 scripts/crash-summary.py
       - uses: actions/upload-artifact@v4
         if: always()

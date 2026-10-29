@@ -94,6 +94,7 @@ PY
 codesign --force --sign - "$control"
 "$harness/Contents/MacOS/AsideHostHarness" --bundle-probe "$control"
 mkdir -p dist/smoke
+launchctl setenv ASIDE_IMK_DIAGNOSTICS_PATH "$PWD/dist/smoke/ime-events.txt"
 "$harness/Contents/MacOS/AsideHostHarness" --register "$HOME/Library/Input Methods/Aside.app"
 defaults read com.apple.HIToolbox AppleEnabledInputSources
 defaults read com.apple.inputsources AppleEnabledThirdPartyInputSources
@@ -102,6 +103,7 @@ killall TextInputMenuAgent 2>/dev/null || true
 killall imklaunchagent 2>/dev/null || true
 sleep 2
 if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
+  cat dist/smoke/ime-events.txt || true
   /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
   xcrun lldb --batch \
     -o "run --live \"$HOME/Library/Input Methods/Aside.app\"" \

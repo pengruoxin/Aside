@@ -3,9 +3,20 @@ import InputMethodKit
 import AsideOffline
 import AsideCore
 
+func imeDiagnostic(_ message: String) {
+    guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { return }
+    let url = URL(fileURLWithPath: path)
+    if !FileManager.default.fileExists(atPath: path) { FileManager.default.createFile(atPath: path, contents: nil) }
+    guard let file = try? FileHandle(forWritingTo: url) else { return }
+    defer { try? file.close() }
+    _ = try? file.seekToEnd()
+    try? file.write(contentsOf: Data((message + "\n").utf8))
+}
+
 @MainActor final class InputMethodDelegate: NSObject, NSApplicationDelegate {
     var server: IMKServer?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        imeDiagnostic("application launched; controller available: \(NSClassFromString("AsideInputController") != nil)")
         NSLog("Aside input method starting; controller available: %@", NSClassFromString("AsideInputController") == nil ? "no" : "yes")
         fputs("Aside applicationDidFinishLaunching; controller available: \(NSClassFromString("AsideInputController") != nil)\n", stderr)
         do {
@@ -16,6 +27,7 @@ import AsideCore
                 throw SmokeError.invalidMetadata
             }
             server = IMKServer(name: connection, bundleIdentifier: identifier)
+            imeDiagnostic("server initialized: \(server != nil)")
             NSLog("Aside input method server initialized: %@", server == nil ? "no" : "yes")
             fputs("Aside server initialized: \(server != nil)\n", stderr)
         } catch {

@@ -10,6 +10,8 @@ import AsideOffline
     @MainActor static func main() {
         setbuf(stdout, nil)
         let app = NSApplication.shared
+        print("Harness activation policy before setup:", app.activationPolicy().rawValue)
+        app.setActivationPolicy(.regular)
         Task { @MainActor in
             do {
                 if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--bundle-probe" {
@@ -173,6 +175,8 @@ import AsideOffline
         }
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 2_000_000_000)
+        print("Host active:", NSApp.isActive, "key window:", window.isKeyWindow,
+              "input context:", editor.inputContext?.selectedKeyboardInputSource ?? "nil")
         for char in "nihao" { try await send(String(char), window: window) }
         try await send(" ", window: window)
         try await Task.sleep(nanoseconds: 300_000_000)

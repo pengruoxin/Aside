@@ -20,9 +20,13 @@ import AsideOffline
         return panel
     }()
 
-    override func recognizedEvents(_ sender: Any!) -> Int { Int(NSEvent.EventTypeMask.keyDown.rawValue) }
+    override func recognizedEvents(_ sender: Any!) -> Int {
+        imeDiagnostic("recognizedEvents queried")
+        return Int(NSEvent.EventTypeMask.keyDown.rawValue)
+    }
 
     override func activateServer(_ sender: Any!) {
+        imeDiagnostic("activateServer called; text client: \(sender is IMKTextInput)")
         MainActor.assumeIsolated {
             if active { commitOriginal() }
             generation?.cancel()
@@ -70,6 +74,7 @@ import AsideOffline
         MainActor.assumeIsolated { process(event, sender: sender) }
     }
     @MainActor private func process(_ event: NSEvent?, sender: Any?) -> Bool {
+        imeDiagnostic("handle event; active: \(active); text client: \(sender is IMKTextInput)")
         guard let event, active, let client = sender as? IMKTextInput else { return false }
         if let target, (target as AnyObject) !== (client as AnyObject) {
             commitOriginal()
