@@ -57,7 +57,8 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             self.process = child
             let session = URLSession(configuration: .ephemeral, delegate: RejectRedirects(), delegateQueue: nil)
             defer { session.invalidateAndCancel() }
-            for _ in 0..<150 {
+            let deadline = ProcessInfo.processInfo.systemUptime + 180
+            while ProcessInfo.processInfo.systemUptime < deadline {
                 try Task.checkCancellation()
                 guard child.isRunning else { throw OfflineError.startupFailed }
                 var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/health")!)
