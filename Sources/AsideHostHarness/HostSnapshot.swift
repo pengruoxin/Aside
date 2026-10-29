@@ -10,7 +10,7 @@ import AsideCore
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = content.displays.first else { return }
         let windows = content.windows.filter { window in
-            let owner = window.owningApplication?.bundleIdentifier?.lowercased() ?? ""
+            let owner = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
             return window.windowID == CGWindowID(host.windowNumber)
                 || owner == InputSourcePreferences.bundleID.lowercased()
                 || owner.contains("inputmethodkit")
@@ -27,7 +27,7 @@ import AsideCore
         configuration.showsCursor = false
         let bitmap = try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(display: display, including: windows), configuration: configuration)
         guard let png = NSBitmapImageRep(cgImage: bitmap).representation(using: .png, properties: [:]) else { return }
-        try png.write(to: URL(fileURLWithPath: output).appendingPathComponent(name + ".png"), options: .atomic)
+        try png.write(to: URL(fileURLWithPath: output).appendingPathComponent(name + ".png"), options: Data.WritingOptions.atomic)
         print("Captured native fixture and IME windows:", name, "window count:", windows.count)
     }
 }

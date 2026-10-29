@@ -220,6 +220,64 @@ import AsideOffline
         }
         window.close()
         try await liveWebInput()
+        try await liveBaidu()
+    }
+
+    @MainActor private static func liveBaidu() async throws {
+        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 900, height: 560))
+        let observer = BaiduNavigation()
+        web.navigationDelegate = observer
+        let window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = "句外输入法 · 百度实际页面验证"
+        window.contentView = web
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { window.close() }
+        web.load(URLRequest(url: URL(string: "https://www.baidu.com/")!))
+        let focus = "(() => { const field=document.querySelector('#kw,input[name=wd]'); if(!field)return false; field.value='';field.focus();return true; })()"
+        var loaded = false
+        for _ in 0..<100 {
+            if (try? await web.evaluateJavaScript(focus)) as? Bool == true { loaded = true; break }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        guard loaded else {
+            try baiduReport("UNAVAILABLE: runner could not load the real Baidu search field; no Baidu acceptance claim.")
+            return
+        }
+        try await selectMode(".Chinese")
+        try await Task.sleep(nanoseconds: 700_000_000)
+        for character in "nihao " { try await send(String(character), window: window) }
+        let value = try await web.evaluateJavaScript("document.querySelector('#kw,input[name=wd]').value") as? String
+        guard value == "你好" else { throw Failure.liveBaidu }
+        try await HostSnapshot.capture("baidu-input", host: window)
+        try await send("\r", window: window)
+        for _ in 0..<40 {
+            if observer.searches > 0 { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        guard observer.searches == 1 else { throw Failure.liveBaidu }
+        try baiduReport("PASS: actual https://www.baidu.com/ in WebKit accepted IMK Chinese input and one Return search for 你好. Navigation was cancelled after observing the search request.")
+    }
+
+    private static func baiduReport(_ message: String) throws {
+        print(message)
+        if let folder = ProcessInfo.processInfo.environment["ASIDE_SMOKE_OUTPUT"] {
+            try Data(message.utf8).write(to: URL(fileURLWithPath: folder).appendingPathComponent("baidu.txt"))
+        }
+    }
+
+    @MainActor private final class BaiduNavigation: NSObject, WKNavigationDelegate {
+        var searches = 0
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            if let url = navigationAction.request.url,
+               URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "wd" && $0.value == "你好" }) == true {
+                searches += 1
+                decisionHandler(.cancel)
+            } else { decisionHandler(.allow) }
+        }
     }
 
     @MainActor private static func offlineInput(editor: NSTextView, window: NSWindow, delegate: SendDelegate) async throws {
@@ -331,5 +389,5 @@ import AsideOffline
             return false
         }
     }
-    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl, wrongInstalledBundle, offlinePreview, liveWebInput, hostSelectionChanged }
+    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl, wrongInstalledBundle, offlinePreview, liveWebInput, hostSelectionChanged, liveBaidu }
 }
