@@ -298,6 +298,7 @@ import AsideOffline
                     panel?.update()
                     panel?.show(kIMKLocateCandidatesBelowHint)
                     panel?.showAnnotation(NSAttributedString(string: preview.expression + "\n\n" + preview.explanation))
+                    imeDiagnostic("annotation shown")
                 }
             }
         }

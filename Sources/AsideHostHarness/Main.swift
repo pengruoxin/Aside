@@ -317,7 +317,7 @@ import AsideOffline
             settings.englishOutput = previous.3; settings.paused = previous.4; settings.customModel = previous.5
         }
         settings.engine = "bundled"; settings.style = .casual; settings.automatic = false
-        settings.englishOutput = true; settings.paused = false; settings.customModel = ""
+        settings.englishOutput = false; settings.paused = false; settings.customModel = ""
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 700_000_000)
         for character in "nihao " { try await send(String(character), window: window) }
@@ -331,12 +331,30 @@ import AsideOffline
             try await Task.sleep(nanoseconds: 250_000_000)
         }
         guard readyCount() > before, editor.string == "你好" else { throw Failure.offlinePreview }
+        try await HostSnapshot.clickCandidate(host: window)
+        try await Task.sleep(nanoseconds: 500_000_000)
+        guard ((try? String(contentsOfFile: path)) ?? "").contains("annotation shown"), editor.string == "你好" else { throw Failure.offlinePreview }
+        try await HostSnapshot.capture("english-explanation", host: window)
+        try await send("\r", window: window)
+        guard delegate.submissions.count == 3, delegate.submissions.last == "你好" else { throw Failure.returnWasNotForwarded }
+        print("Learning mode passed: clicked native candidate showed Chinese annotation; Return submitted only the original Chinese.")
+        settings.englishOutput = true
+        try await Task.sleep(nanoseconds: 500_000_000)
+        for character in "nihao " { try await send(String(character), window: window) }
+        let second = readyCount()
+        try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
+        let secondDeadline = ProcessInfo.processInfo.systemUptime + 240
+        while readyCount() == second, ProcessInfo.processInfo.systemUptime < secondDeadline {
+            guard editor.string == "你好" else { throw Failure.previewLeaked }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+        guard readyCount() > second, editor.string == "你好" else { throw Failure.offlinePreview }
         try await HostSnapshot.capture("english-candidate", host: window)
         try await send("\t", window: window)
         let english = editor.string
         guard SentencePolicy.language(of: english) == .english else { throw Failure.offlinePreview }
         try await send("\r", window: window)
-        guard delegate.submissions.count == 3, delegate.submissions.last == english else { throw Failure.returnWasNotForwarded }
+        guard delegate.submissions.count == 4, delegate.submissions.last == english else { throw Failure.returnWasNotForwarded }
         print("Real offline IMK flow passed: Chinese source stayed unchanged while generating; Tab adopted English; Return submitted once.")
     }
 

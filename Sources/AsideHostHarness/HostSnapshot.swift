@@ -4,6 +4,24 @@ import AsideCore
 
 /// CI-only: capture the fixture and visible IME windows, excluding other apps.
 @MainActor enum HostSnapshot {
+    static func clickCandidate(host: NSWindow) async throws {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let candidate = content.windows.first(where: { window in
+            let owner = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
+            return window.windowID != CGWindowID(host.windowNumber) && window.frame.height < 180
+                && (owner == InputSourcePreferences.bundleID.lowercased() || owner.contains("inputmethodkit"))
+        }), let owner = candidate.owningApplication else {
+            throw NSError(domain: "Aside.CandidateFixture", code: 1)
+        }
+        let point = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)!
+            event.setIntegerValueField(.mouseEventClickState, value: 1)
+            event.postToPid(owner.processID)
+            try await Task.sleep(nanoseconds: 60_000_000)
+        }
+    }
+
     static func capture(_ name: String, host: NSWindow) async throws {
         guard let output = ProcessInfo.processInfo.environment["ASIDE_SMOKE_OUTPUT"] else { return }
         try await Task.sleep(nanoseconds: 300_000_000)
