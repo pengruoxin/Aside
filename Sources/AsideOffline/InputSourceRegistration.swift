@@ -6,7 +6,7 @@ import AsideCore
     /// Some macOS versions report noErr while leaving the parent IME disabled.
     /// In that case, merge the same entries System Settings stores, preserving
     /// all existing sources. A new login may still be needed to refresh TIS.
-    public static func enableInstalledBundle(_ bundle: URL) throws {
+    @discardableResult public static func enableInstalledBundle(_ bundle: URL) throws -> Bool {
         guard TISRegisterInputSource(bundle as CFURL) == noErr else { throw RegistrationError.failed }
         let query = [kTISPropertyBundleID as String: InputSourcePreferences.bundleID] as CFDictionary
         let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
@@ -16,21 +16,28 @@ import AsideCore
             guard let raw = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) else { return false }
             return CFBooleanGetValue(unsafeBitCast(raw, to: CFBoolean.self))
         }
-        if enabled { return }
+        if enabled { return false }
 
-        let domain = "com.apple.HIToolbox" as CFString
-        let key = "AppleEnabledInputSources" as CFString
-        let raw = CFPreferencesCopyAppValue(key, domain)
-        guard raw == nil || raw is [[String: Any]] else { throw RegistrationError.unexpectedPreferences }
-        let existing = raw as? [[String: Any]] ?? []
-        let backup = OfflinePaths.support.appendingPathComponent("InputSources-before-Aside.plist")
-        if !FileManager.default.fileExists(atPath: backup.path) {
-            try FileManager.default.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try PropertyListSerialization.data(fromPropertyList: existing, format: .xml, options: 0)
-            try data.write(to: backup, options: .atomic)
+        // Third-party sources have a separate allow-list from the enabled
+        // keyboard list. See qingjian-team/qingjian#209's reproduced diagnosis.
+        // Never replace other sources or other preference keys.
+        for (name, property) in [("com.apple.inputsources", "AppleEnabledThirdPartyInputSources"),
+                                 ("com.apple.HIToolbox", "AppleEnabledInputSources")] {
+            let domain = name as CFString
+            let key = property as CFString
+            let raw = CFPreferencesCopyAppValue(key, domain)
+            guard raw == nil || raw is [[String: Any]] else { throw RegistrationError.unexpectedPreferences }
+            let existing = raw as? [[String: Any]] ?? []
+            let backup = OfflinePaths.support.appendingPathComponent(name + "-before-Aside.plist")
+            if !FileManager.default.fileExists(atPath: backup.path) {
+                try FileManager.default.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
+                let data = try PropertyListSerialization.data(fromPropertyList: existing, format: .xml, options: 0)
+                try data.write(to: backup, options: .atomic)
+            }
+            CFPreferencesSetAppValue(key, InputSourcePreferences.enablingAside(in: existing) as CFArray, domain)
+            guard CFPreferencesAppSynchronize(domain) else { throw RegistrationError.failed }
         }
-        CFPreferencesSetAppValue(key, InputSourcePreferences.enablingAside(in: existing) as CFArray, domain)
-        guard CFPreferencesAppSynchronize(domain) else { throw RegistrationError.failed }
+        return true // Login-session caches may require a new login; don't claim selection succeeded.
     }
 
     public enum RegistrationError: LocalizedError {

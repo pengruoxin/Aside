@@ -37,9 +37,11 @@ import AsideCore
                         if check.terminationStatus != 0 { throw InstallError.invalidSignature }
                     })
                 }.value
-                try InputSourceRegistration.enableInstalledBundle(destination)
+                let requiresLogin = try InputSourceRegistration.enableInstalledBundle(destination)
                 installed = true
-                message = backup == nil
+                message = requiresLogin
+                    ? "文件已安装，已登记句外输入源。请先保存其他应用的工作，退出登录后重新登录，再在输入源菜单选择“句外拼音”或“句外英文”。当前尚未验证系统切换成功。"
+                    : backup == nil
                     ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请注销后重新登录，再在键盘设置添加。"
                     : "升级完成，旧版已备份。请先注销并重新登录，让 macOS 加载新版本，再切换到句外输入法。"
             } catch { message = error.localizedDescription }

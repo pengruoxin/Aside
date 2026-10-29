@@ -94,12 +94,9 @@ PY
 codesign --force --sign - "$control"
 "$harness/Contents/MacOS/AsideHostHarness" --bundle-probe "$control"
 mkdir -p dist/smoke
-open -g --stderr "$PWD/dist/smoke/ime-startup.txt" "$HOME/Library/Input Methods/Aside.app"
-sleep 2
-pgrep -fl AsideInputMethod || true
-cat dist/smoke/ime-startup.txt || true
 "$harness/Contents/MacOS/AsideHostHarness" --register "$HOME/Library/Input Methods/Aside.app"
 defaults read com.apple.HIToolbox AppleEnabledInputSources
+defaults read com.apple.inputsources AppleEnabledThirdPartyInputSources
 # Refresh the CI login's input menu after registering its first third-party IME.
 killall TextInputMenuAgent 2>/dev/null || true
 killall imklaunchagent 2>/dev/null || true
