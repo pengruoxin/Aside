@@ -170,6 +170,8 @@ import AsideOffline
         window.contentView = editor
         let delegate = SendDelegate()
         editor.delegate = delegate
+        window.title = "句外输入法 · 标准输入框验证"
+        window.center()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(editor)
         NSApp.activate(ignoringOtherApps: true)
@@ -187,6 +189,7 @@ import AsideOffline
         print("Host active:", NSApp.isActive, "key window:", window.isKeyWindow,
               "input context:", editor.inputContext?.selectedKeyboardInputSource ?? "nil")
         for char in "nihao" { try await send(String(char), window: window) }
+        try await HostSnapshot.capture("pinyin-candidates", host: window)
         try await send(" ", window: window)
         try await Task.sleep(nanoseconds: 300_000_000)
         guard editor.string == "你好" else {
@@ -241,6 +244,7 @@ import AsideOffline
             try await Task.sleep(nanoseconds: 250_000_000)
         }
         guard readyCount() > before, editor.string == "你好" else { throw Failure.offlinePreview }
+        try await HostSnapshot.capture("english-candidate", host: window)
         try await send("\t", window: window)
         let english = editor.string
         guard SentencePolicy.language(of: english) == .english else { throw Failure.offlinePreview }

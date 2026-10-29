@@ -91,6 +91,7 @@ stat -f 'CI console user: %Su' /dev/console
 mkdir -p "$HOME/Library/Input Methods"
 mkdir -p dist/smoke
 export ASIDE_IMK_DIAGNOSTICS_PATH="$PWD/dist/smoke/ime-events.txt"
+export ASIDE_SMOKE_OUTPUT="$PWD/dist/smoke"
 launchctl setenv ASIDE_IMK_DIAGNOSTICS_PATH "$ASIDE_IMK_DIAGNOSTICS_PATH"
 "$harness/Contents/MacOS/AsideHostHarness" --register "$HOME/Library/Input Methods/Aside.app"
 defaults read com.apple.HIToolbox AppleEnabledInputSources
