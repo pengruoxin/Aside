@@ -11,6 +11,7 @@ import AsideOffline
         setbuf(stdout, nil)
         let app = NSApplication.shared
         print("Harness activation policy before setup:", app.activationPolicy().rawValue)
+        print("Event posting permission:", CGPreflightPostEventAccess())
         app.setActivationPolicy(.regular)
         Task { @MainActor in
             do {
@@ -227,11 +228,16 @@ import AsideOffline
         for down in [true, false] {
             let hardware = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)!
             hardware.flags = uppercase ? .maskShift : []
-            let utf16 = Array(text.utf16)
-            hardware.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
             guard let event = NSEvent(cgEvent: hardware) else { throw Failure.systemControl }
-            // IME processing needs the normal event loop/currentEvent context.
-            NSApp.postEvent(event, atStart: false)
+            // Unicode text injection bypasses IMEs. Exercise physical keycodes.
+            if CommandLine.arguments.contains("--post-to-self") {
+                hardware.postToPid(getpid())
+            } else if CommandLine.arguments.contains("--context-events") {
+                let context = (window.firstResponder as? NSView)?.inputContext
+                if context?.handleEvent(event) != true { window.sendEvent(event) }
+            } else {
+                NSApp.postEvent(event, atStart: false)
+            }
         }
         try await Task.sleep(nanoseconds: 80_000_000)
     }

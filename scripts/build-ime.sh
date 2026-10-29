@@ -61,6 +61,15 @@ codesign --verify --deep --strict "$ime"
 if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
   "$ime/Contents/MacOS/AsideInputMethod" --offline-smoke-test
 fi
+installer="$PWD/dist/安装句外.app"
+mkdir -p "$installer/Contents/MacOS" "$installer/Contents/Resources" "$PWD/dist/smoke"
+cp "$bin/AsideInstaller" "$installer/Contents/MacOS/"
+cp Resources/Installer-Info.plist "$installer/Contents/Info.plist"
+cp "$ime/Contents/Resources/Aside.icns" "$installer/Contents/Resources/Aside.icns"
+ditto "$ime" "$installer/Contents/Resources/Aside.app"
+codesign --force --sign - "$installer"
+codesign --verify --deep --strict "$installer"
+"$installer/Contents/MacOS/AsideInstaller" --snapshot-ui "$PWD/dist/smoke"
 "$bin/AsideHostHarness"
 harness="$PWD/dist/AsideHostHarness.app"
 mkdir -p "$harness/Contents/MacOS"
@@ -75,7 +84,17 @@ cat > "$harness/Contents/Info.plist" <<'EOF'
 </dict></plist>
 EOF
 codesign --force --sign - "$harness"
-"$harness/Contents/MacOS/AsideHostHarness" --system-probe
+# Establish an event route against Apple's actual IME before testing Aside.
+# Every route sends physical virtual-key codes, never inserts expected text.
+if "$harness/Contents/MacOS/AsideHostHarness" --system-probe --post-to-self; then
+  event_route=--post-to-self
+elif "$harness/Contents/MacOS/AsideHostHarness" --system-probe --context-events; then
+  event_route=--context-events
+else
+  "$harness/Contents/MacOS/AsideHostHarness" --system-probe
+  event_route=--queue-events
+fi
+echo "Validated Apple Pinyin event route: $event_route"
 stat -f 'CI console user: %Su' /dev/console
 mkdir -p "$HOME/Library/Input Methods"
 ditto "$ime" "$HOME/Library/Input Methods/Aside.app"
@@ -105,7 +124,7 @@ defaults read com.apple.inputsources AppleEnabledThirdPartyInputSources
 killall TextInputMenuAgent 2>/dev/null || true
 killall imklaunchagent 2>/dev/null || true
 sleep 2
-if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app"; then
+if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Methods/Aside.app" "$event_route"; then
   cat dist/smoke/ime-events.txt || true
   /usr/bin/log show --last 3m --style compact --info --predicate 'process == "imklaunchagent" OR process == "AsideInputMethod"' | tail -100 || true
   xcrun lldb --batch \
@@ -113,13 +132,4 @@ if ! "$harness/Contents/MacOS/AsideHostHarness" --live "$HOME/Library/Input Meth
     -o "thread backtrace all" -- "$harness/Contents/MacOS/AsideHostHarness" || true
   exit 1
 fi
-installer="$PWD/dist/安装句外.app"
-mkdir -p "$installer/Contents/MacOS" "$installer/Contents/Resources"
-cp "$bin/AsideInstaller" "$installer/Contents/MacOS/"
-cp Resources/Installer-Info.plist "$installer/Contents/Info.plist"
-cp "$ime/Contents/Resources/Aside.icns" "$installer/Contents/Resources/Aside.icns"
-ditto "$ime" "$installer/Contents/Resources/Aside.app"
-codesign --force --sign - "$installer"
-codesign --verify --deep --strict "$installer"
-"$installer/Contents/MacOS/AsideInstaller" --snapshot-ui "$PWD/dist/smoke"
 echo "Built actual input method and installer; model inclusion: ${ASIDE_INCLUDE_MODEL:-0}"

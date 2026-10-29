@@ -14,6 +14,10 @@ import AsideOffline
     private var modeID = ""
     private var hasMarkedText = false
     private var preferencesObserver: NSObjectProtocol?
+    deinit {
+        generation?.cancel()
+        if let preferencesObserver { DistributedNotificationCenter.default().removeObserver(preferencesObserver) }
+    }
     private lazy var panel: IMKCandidates? = {
         let panel = IMKCandidates(server: server(), panelType: kIMKSingleRowSteppingCandidatePanel)
         panel?.setAttributes([IMKCandidatesSendServerKeyEventFirst: NSNumber(value: true)])
