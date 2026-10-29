@@ -121,4 +121,5 @@ cp "$ime/Contents/Resources/Aside.icns" "$installer/Contents/Resources/Aside.icn
 ditto "$ime" "$installer/Contents/Resources/Aside.app"
 codesign --force --sign - "$installer"
 codesign --verify --deep --strict "$installer"
+"$installer/Contents/MacOS/AsideInstaller" --snapshot-ui "$PWD/dist/smoke"
 echo "Built actual input method and installer; model inclusion: ${ASIDE_INCLUDE_MODEL:-0}"

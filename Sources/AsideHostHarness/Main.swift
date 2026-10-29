@@ -78,6 +78,7 @@ import AsideOffline
             try await Task.sleep(nanoseconds: 2_000_000_000)
             for character in "nihao " { try await send(String(character), window: window) }
             print("Control Apple Pinyin typed value:", editor.string)
+            guard editor.string == "你好" else { throw Failure.systemControl }
         }
         print("Control Apple Pinyin count:", sources.count)
     }
@@ -222,11 +223,15 @@ import AsideOffline
             "b":11, "q":12, "w":13, "e":14, "r":15, "y":16, "t":17, "o":31, "u":32, "i":34, "p":35,
             "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36]
         let uppercase = text != text.lowercased()
-        let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: uppercase ? .shift : [],
-                                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-                                    context: nil, characters: text, charactersIgnoringModifiers: text.lowercased(),
-                                    isARepeat: false, keyCode: codes[text.lowercased()] ?? 0)!
-        NSApp.sendEvent(event)
+        let code = codes[text.lowercased()] ?? 0
+        for down in [true, false] {
+            let hardware = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)!
+            hardware.flags = uppercase ? .maskShift : []
+            let utf16 = Array(text.utf16)
+            hardware.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
+            guard let event = NSEvent(cgEvent: hardware) else { throw Failure.systemControl }
+            window.sendEvent(event)
+        }
         try await Task.sleep(nanoseconds: 80_000_000)
     }
     @MainActor private final class SendDelegate: NSObject, NSTextViewDelegate {
@@ -240,5 +245,5 @@ import AsideOffline
             return false
         }
     }
-    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded }
+    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl }
 }
