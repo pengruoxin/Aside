@@ -85,12 +85,12 @@ struct InstallerView: View {
             Text("适用于 Apple Silicon / macOS 26+ · 0.3.0 输入法测试版\n未完成 Apple Developer ID 签名与公证。实际百度、微信兼容性仍需验收。")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(32).frame(width: 590).tint(Color(red: 0.30, green: 0.42, blue: 0.34))
-            .onAppear { InstallerScreenshots.runIfRequested() }
+            .onAppear { InstallerScreenshots.runIfRequested(); InstallerSmoke.runIfRequested() }
     }
 }
 
 @main struct InstallerApp: App {
     var body: some Scene {
-        WindowGroup("安装句外输入法") { InstallerView() }.windowResizability(.contentSize)
+        Window("安装句外输入法", id: "installer") { InstallerView() }.windowResizability(.contentSize)
     }
 }

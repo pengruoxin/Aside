@@ -180,6 +180,10 @@ import AsideOffline
         }
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 2_000_000_000)
+        let installedPath = bundle.resolvingSymlinksInPath().path
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: InputSourcePreferences.bundleID).contains(where: {
+            $0.bundleURL?.resolvingSymlinksInPath().path == installedPath
+        }) else { throw Failure.wrongInstalledBundle }
         print("Host active:", NSApp.isActive, "key window:", window.isKeyWindow,
               "input context:", editor.inputContext?.selectedKeyboardInputSource ?? "nil")
         for char in "nihao" { try await send(String(char), window: window) }
@@ -197,7 +201,75 @@ import AsideOffline
         try await send("\r", window: window)
         guard delegate.submissions == ["你好", "Hello."] else { throw Failure.liveEnglish }
         print("Actual installed IMK source: nihao+Space → 你好; Return submitted once; English mode passed.")
+        if CommandLine.arguments.contains("--offline-input") {
+            try await offlineInput(editor: editor, window: window, delegate: delegate)
+        }
         window.close()
+        try await liveWebInput()
+    }
+
+    @MainActor private static func offlineInput(editor: NSTextView, window: NSWindow, delegate: SendDelegate) async throws {
+        let settings = OfflineConfiguration.shared
+        let previous = (settings.engine, settings.style, settings.automatic, settings.englishOutput, settings.paused, settings.customModel)
+        defer {
+            settings.engine = previous.0; settings.style = previous.1; settings.automatic = previous.2
+            settings.englishOutput = previous.3; settings.paused = previous.4; settings.customModel = previous.5
+        }
+        settings.engine = "bundled"; settings.style = .casual; settings.automatic = false
+        settings.englishOutput = true; settings.paused = false; settings.customModel = ""
+        try await selectMode(".Chinese")
+        try await Task.sleep(nanoseconds: 700_000_000)
+        for character in "nihao " { try await send(String(character), window: window) }
+        guard editor.string == "你好", let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.liveChinese }
+        func readyCount() -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "preview ready").count }
+        let before = readyCount()
+        try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
+        let deadline = ProcessInfo.processInfo.systemUptime + 240
+        while readyCount() == before, ProcessInfo.processInfo.systemUptime < deadline {
+            guard editor.string == "你好" else { throw Failure.previewLeaked }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+        guard readyCount() > before, editor.string == "你好" else { throw Failure.offlinePreview }
+        try await send("\t", window: window)
+        let english = editor.string
+        guard SentencePolicy.language(of: english) == .english else { throw Failure.offlinePreview }
+        try await send("\r", window: window)
+        guard delegate.submissions.count == 3, delegate.submissions.last == english else { throw Failure.returnWasNotForwarded }
+        print("Real offline IMK flow passed: Chinese source stayed unchanged while generating; Tab adopted English; Return submitted once.")
+    }
+
+    @MainActor private static func liveWebInput() async throws {
+        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 650, height: 300))
+        let window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = web
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { window.close() }
+        web.loadHTMLString("""
+        <html><body><form><input id='search' type='search'></form><textarea id='chat'></textarea><script>
+        window.sent=[];
+        document.querySelector('form').onsubmit=function(event){event.preventDefault();sent.push(['search',search.value]);search.value='';};
+        chat.onkeydown=function(event){if(event.key==='Enter'&&!event.isComposing&&!event.shiftKey){event.preventDefault();sent.push(['chat',chat.value]);chat.value='';}};
+        </script></body></html>
+        """, baseURL: nil)
+        for _ in 0..<80 {
+            if (try? await web.evaluateJavaScript("document.getElementById('chat') !== null")) as? Bool == true { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        try await selectMode(".Chinese")
+        for field in ["search", "chat"] {
+            _ = try await web.evaluateJavaScript("document.getElementById('\(field)').focus()")
+            try await Task.sleep(nanoseconds: 500_000_000)
+            for character in "nihao " { try await send(String(character), window: window) }
+            let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String
+            guard value == "你好" else { throw Failure.liveWebInput }
+            try await send("\r", window: window)
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        let sent = try await web.evaluateJavaScript("window.sent") as? [[String]]
+        guard sent == [["search", "你好"], ["chat", "你好"]] else { throw Failure.returnWasNotForwarded }
+        print("Real IMK keycodes in WebKit search/chat controls passed; Return submitted each field exactly once.")
     }
     @MainActor private static func selectMode(_ suffix: String) async throws {
         let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary
@@ -219,25 +291,17 @@ import AsideOffline
         }
         throw Failure.registration
     }
-    @MainActor private static func send(_ text: String, window: NSWindow) async throws {
+    @MainActor private static func send(_ text: String, window: NSWindow, modifiers: CGEventFlags = []) async throws {
         let codes: [String: UInt16] = ["a":0, "s":1, "d":2, "f":3, "h":4, "g":5, "z":6, "x":7, "c":8, "v":9,
             "b":11, "q":12, "w":13, "e":14, "r":15, "y":16, "t":17, "o":31, "u":32, "i":34, "p":35,
-            "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36]
+            "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36, "\t":48]
         let uppercase = text != text.lowercased()
         let code = codes[text.lowercased()] ?? 0
         for down in [true, false] {
             let hardware = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)!
-            hardware.flags = uppercase ? .maskShift : []
-            guard let event = NSEvent(cgEvent: hardware) else { throw Failure.systemControl }
+            hardware.flags = modifiers.union(uppercase ? .maskShift : [])
             // Unicode text injection bypasses IMEs. Exercise physical keycodes.
-            if CommandLine.arguments.contains("--post-to-self") {
-                hardware.postToPid(getpid())
-            } else if CommandLine.arguments.contains("--context-events") {
-                let context = (window.firstResponder as? NSView)?.inputContext
-                if context?.handleEvent(event) != true { window.sendEvent(event) }
-            } else {
-                NSApp.postEvent(event, atStart: false)
-            }
+            hardware.postToPid(getpid())
         }
         try await Task.sleep(nanoseconds: 80_000_000)
     }
@@ -252,5 +316,5 @@ import AsideOffline
             return false
         }
     }
-    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl }
+    enum Failure: Error { case previewLeaked, noTextClient, registration, liveChinese, liveEnglish, returnWasNotForwarded, systemControl, wrongInstalledBundle, offlinePreview, liveWebInput }
 }

@@ -263,6 +263,7 @@ import AsideOffline
                 let result = try await OfflineTranslator.generate(WritingRequest(source: source, style: style))
                 try Task.checkCancellation()
                 guard let self, self.active, self.composition.acceptPreview(result, revision: token) else { return }
+                imeDiagnostic("preview ready")
                 settings.status = settings.englishOutput ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
                 self.refresh()
             } catch {
@@ -291,8 +292,10 @@ import AsideOffline
                 refresh()
             } else if composition.preview?.expression == candidateString.string {
                 if OfflineConfiguration.shared.englishOutput { adoptEnglish() }
-                else if let explanation = composition.preview?.explanation {
-                    panel?.showAnnotation(NSAttributedString(string: explanation))
+                else if let preview = composition.preview {
+                    panel?.update()
+                    panel?.show(kIMKLocateCandidatesBelowHint)
+                    panel?.showAnnotation(NSAttributedString(string: preview.expression + "\n\n" + preview.explanation))
                 }
             }
         }
