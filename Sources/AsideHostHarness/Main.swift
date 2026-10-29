@@ -75,6 +75,9 @@ import AsideOffline
         for source in sources {
             print("Control Apple Pinyin enable:", TISEnableInputSource(source))
             print("Control Apple Pinyin select:", TISSelectInputSource(source))
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+            for character in "nihao " { try await send(String(character), window: window) }
+            print("Control Apple Pinyin typed value:", editor.string)
         }
         print("Control Apple Pinyin count:", sources.count)
     }

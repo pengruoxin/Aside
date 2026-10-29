@@ -42,12 +42,12 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             try Task.checkCancellation()
             guard let self, let model = OfflinePaths.model else { throw OfflineError.modelMissing }
             guard self.startupID == currentID else { throw CancellationError() }
-            guard let executable = OfflinePaths.executable else { throw OfflineError.runtimeUnavailable }
+            guard let executable = OfflinePaths.executable, let launcher = OfflinePaths.launcher else { throw OfflineError.runtimeUnavailable }
             let port = Int.random(in: 20000...60000)
             let key = UUID().uuidString + UUID().uuidString
             let child = Process()
-            child.executableURL = executable
-            child.arguments = ["--model", model.path, "--host", "127.0.0.1", "--port", String(port), "--ctx-size", "4096",
+            child.executableURL = launcher
+            child.arguments = [executable.path, "--model", model.path, "--host", "127.0.0.1", "--port", String(port), "--ctx-size", "4096",
                                "--parallel", "1", "--threads", "4", "--n-gpu-layers", "99", "--no-webui"]
             child.environment = ["PATH": "/usr/bin:/bin", "HOME": NSHomeDirectory(), "LLAMA_API_KEY": key]
             child.standardOutput = FileHandle.nullDevice

@@ -73,4 +73,8 @@ public enum OfflinePaths {
         let url = inputMethodBundle.bundleURL.appendingPathComponent("Contents/Helpers/llama-server")
         return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
+    public static var launcher: URL? {
+        let url = inputMethodBundle.bundleURL.appendingPathComponent("Contents/Helpers/aside-runtime")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
 }

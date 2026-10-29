@@ -35,6 +35,8 @@ cmake -S .build-deps/llama -B .build-deps/llama/build \
   -DLLAMA_BUILD_APP=OFF -DLLAMA_BUILD_UI=OFF -DLLAMA_USE_PREBUILT_UI=OFF -DLLAMA_OPENSSL=OFF
 cmake --build .build-deps/llama/build --config Release --target llama-server --parallel 3
 cp .build-deps/llama/build/bin/llama-server "$ime/Contents/Helpers/"
+cc -O2 -Wall -Wextra -Werror -mmacosx-version-min=26.0 scripts/runtime-launcher.c -o "$ime/Contents/Helpers/aside-runtime"
+python3 scripts/runtime-launcher-test.py "$ime/Contents/Helpers/aside-runtime"
 cp .build-deps/llama/LICENSE "$ime/Contents/Resources/Licenses/llama.cpp-MIT.txt"
 cp LICENSE "$ime/Contents/Resources/Licenses/Aside-MIT.txt"
 swift scripts/make-icon.swift dist
@@ -51,6 +53,7 @@ if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
   curl --fail --location --retry 3 https://www.apache.org/licenses/LICENSE-2.0.txt -o "$ime/Contents/Resources/Licenses/Qwen-Apache-2.0.txt"
 fi
 codesign --force --sign - "$ime/Contents/Helpers/llama-server"
+codesign --force --sign - "$ime/Contents/Helpers/aside-runtime"
 plutil -lint "$ime/Contents/Info.plist"
 codesign --force --sign - "$ime"
 codesign --verify --deep --strict "$ime"
