@@ -230,7 +230,8 @@ import AsideOffline
             let utf16 = Array(text.utf16)
             hardware.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
             guard let event = NSEvent(cgEvent: hardware) else { throw Failure.systemControl }
-            window.sendEvent(event)
+            // IME processing needs the normal event loop/currentEvent context.
+            NSApp.postEvent(event, atStart: false)
         }
         try await Task.sleep(nanoseconds: 80_000_000)
     }
