@@ -225,6 +225,7 @@ import AsideOffline
 
     @MainActor private static func liveBaidu() async throws {
         let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 900, height: 560))
+        web.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
         let observer = BaiduNavigation()
         web.navigationDelegate = observer
         let window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
@@ -236,7 +237,7 @@ import AsideOffline
         NSApp.activate(ignoringOtherApps: true)
         defer { window.close() }
         web.load(URLRequest(url: URL(string: "https://www.baidu.com/")!))
-        let focus = "(() => { const field=document.querySelector('#kw,input[name=wd]'); if(!field)return false; field.value='';field.focus();return true; })()"
+        let focus = "(() => { const field=[...document.querySelectorAll('#chat-textarea,#kw,input[name=wd],textarea[name=wd]')].find(f=>{const r=f.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(f).visibility!=='hidden';}); if(!field)return false; window.asideProbeField=field;field.value='';field.focus();return document.activeElement===field; })()"
         var loaded = false
         for _ in 0..<100 {
             if (try? await web.evaluateJavaScript(focus)) as? Bool == true { loaded = true; break }
@@ -248,10 +249,14 @@ import AsideOffline
         }
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 700_000_000)
+        window.makeFirstResponder(web)
+        _ = try await web.evaluateJavaScript(focus)
+        print("Baidu focused element:", try await web.evaluateJavaScript("document.activeElement.tagName+'#'+document.activeElement.id"))
         for character in "nihao " { try await send(String(character), window: window) }
-        let value = try await web.evaluateJavaScript("document.querySelector('#kw,input[name=wd]').value") as? String
-        guard value == "你好" else { throw Failure.liveBaidu }
+        let value = try await web.evaluateJavaScript("window.asideProbeField.value") as? String
+        print("Baidu fixture value:", value ?? "nil")
         try await HostSnapshot.capture("baidu-input", host: window)
+        guard value == "你好" else { throw Failure.liveBaidu }
         try await send("\r", window: window)
         for _ in 0..<40 {
             if observer.searches > 0 { break }
@@ -273,7 +278,7 @@ import AsideOffline
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if let url = navigationAction.request.url,
-               URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "wd" && $0.value == "你好" }) == true {
+               URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { ["wd", "word", "q", "query"].contains($0.name) && $0.value == "你好" }) == true {
                 searches += 1
                 decisionHandler(.cancel)
             } else { decisionHandler(.allow) }
