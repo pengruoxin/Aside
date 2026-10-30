@@ -171,8 +171,10 @@ import AsideOffline
             return false
         }
         if composition.preview != nil {
-            // New typing starts a new sentence; only the original is committed.
-            commitOriginal()
+            // A completed sentence starts fresh. A manual mid-sentence preview
+            // is invalidated while its confirmed words remain in context.
+            if composition.completeSentence != nil { commitOriginal() }
+            else { composition.invalidate() }
         }
         if !englishMode, let rime, rime.available {
             let special: [UInt16: Int32] = [123: 0xff51, 124: 0xff53, 125: 0xff54, 126: 0xff52, 116: 0xff55, 121: 0xff56, 117: 0xffff]
@@ -257,7 +259,7 @@ import AsideOffline
     }
     @MainActor private func adoptEnglish() {
         generation?.cancel()
-        guard let range = ownedRange(), let text = composition.preview?.expression else {
+        guard let range = ownedRange(), let text = composition.englishReplacement else {
             forgetSentence()
             OfflineConfiguration.shared.status = "输入位置已变化，已保留原文。请在当前句子重新生成。"
             return

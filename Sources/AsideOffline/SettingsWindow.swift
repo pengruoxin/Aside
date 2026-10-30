@@ -85,12 +85,12 @@ public struct OfflineSettingsView: View {
                     if testing { ProgressView().controlSize(.small) }
                 }
                 if !result.isEmpty { Text(result).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
-                Text("无 API Key，无云端服务。包内模型约 1.1GB，首次加载可能需要数秒，空闲三分钟后释放。模型可用不等于译文完全准确。")
+                Text("无 API Key，无云端服务。包内模型约 1.1GB，首次加载请稍候，处理时可继续打字；空闲三分钟后释放。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("正常搜索与聊天") {
                 Text("句外拼音与句外英文作为系统输入源切换。空格 / 数字选词；Return 先确认拼音，再交还应用执行搜索或发送。Cmd、Option 等系统编辑快捷键保持交给应用。")
-                Text("译文只显示在原生候选区，不混入正文。百度、微信的最终表现需实机验证；不支持的控件仍保留原文输入。")
+                Text("英文显示在输入法候选区，点击查看中文讲解。输入位置变化时保留原文，不自动采用旧译文。")
                 Text(settings.status).foregroundStyle(.secondary)
             }.font(.caption)
         }

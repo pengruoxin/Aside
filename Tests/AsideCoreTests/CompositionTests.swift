@@ -2,6 +2,12 @@ import XCTest
 @testable import AsideCore
 
 final class CompositionTests: XCTestCase {
+    func testRewritePreservesSpacingBetweenSentences() throws {
+        var state = SentenceComposition()
+        state.append("  This could work. \n")
+        XCTAssertTrue(state.acceptPreview(try .validated(expression: "This may be effective.", explanation: "保留不确定性。"), revision: state.revision))
+        XCTAssertEqual(state.takeEnglish(), "  This may be effective. \n")
+    }
     func testWordsAccumulateWithoutTranslatingFragments() {
         var state = SentenceComposition()
         state.append("我觉得")

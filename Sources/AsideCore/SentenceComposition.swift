@@ -26,13 +26,20 @@ public struct SentenceComposition {
     }
     /// Confirmed source is already in the host; only unfinished pinyin is marked.
     public func hostMarkedText(preedit: String) -> String { preedit }
+    /// A rewrite owns the sentence, not its spacing relative to surrounding text.
+    public var englishReplacement: String? {
+        guard let preview, !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let leading = source.prefix(while: { $0.isWhitespace })
+        let trailing = String(source.reversed().prefix(while: { $0.isWhitespace }).reversed())
+        return String(leading) + preview.expression + trailing
+    }
     public mutating func takeOriginal() -> String {
         let text = source
         reset()
         return text
     }
     public mutating func takeEnglish() -> String? {
-        guard let text = preview?.expression else { return nil }
+        guard let text = englishReplacement else { return nil }
         reset()
         return text
     }

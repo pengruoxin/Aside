@@ -194,6 +194,13 @@ import AsideOffline
             print("Live Chinese value:", editor.string)
             throw Failure.liveChinese
         }
+        for char in "nihao " { try await send(String(char), window: window) }
+        guard editor.string == "你好你好", !editor.hasMarkedText() else { throw Failure.liveChinese }
+        try await send("\u{8}", window: window)
+        guard editor.string == "你好你" else { throw Failure.liveChinese }
+        try await send("\u{8}", window: window)
+        guard editor.string == "你好" else { throw Failure.liveChinese }
+        print("Confirmed words accumulated without marked text; native Backspace deleted normally.")
         try await send("\r", window: window)
         guard delegate.submissions == ["你好"] else { throw Failure.returnWasNotForwarded }
         try await selectMode(".English")
@@ -436,7 +443,7 @@ import AsideOffline
     @MainActor private static func send(_ text: String, window: NSWindow, modifiers: CGEventFlags = []) async throws {
         let codes: [String: UInt16] = ["a":0, "s":1, "d":2, "f":3, "h":4, "g":5, "z":6, "x":7, "c":8, "v":9,
             "b":11, "q":12, "w":13, "e":14, "r":15, "y":16, "t":17, "o":31, "u":32, "i":34, "p":35,
-            "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36, "\t":48]
+            "l":37, "j":38, "k":40, "n":45, "m":46, ".":47, " ":49, "\r":36, "\t":48, "\u{8}":51]
         let uppercase = text != text.lowercased()
         let code = codes[text.lowercased()] ?? 0
         for down in [true, false] {

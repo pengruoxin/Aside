@@ -42,8 +42,8 @@ import AsideCore
                 message = requiresLogin
                     ? "文件已安装，已登记句外输入源。请先保存其他应用的工作，退出登录后重新登录，再在输入源菜单选择“句外拼音”或“句外英文”。当前尚未验证系统切换成功。"
                     : backup == nil
-                    ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请注销后重新登录，再在键盘设置添加。"
-                    : "升级完成，旧版已备份。请先注销并重新登录，让 macOS 加载新版本，再切换到句外输入法。"
+                    ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请退出登录后重新登录，再在键盘设置添加。"
+                    : "升级完成，旧版已备份。请先退出登录并重新登录，让 macOS 加载新版本，再切换到句外输入法。"
             } catch { message = error.localizedDescription }
             busy = false
         }
@@ -54,7 +54,7 @@ import AsideCore
             switch self {
             case .payloadMissing: return "安装包不完整，请重新下载完整版 DMG。"
             case .otherApplication: return "目标位置存在其他应用，未作覆盖。请手动检查 ~/Library/Input Methods/Aside.app。"
-            case .registrationFailed: return "输入法已复制，请注销后重新登录，并在系统设置 → 键盘 → 输入法中添加句外。"
+            case .registrationFailed: return "输入法已复制，请退出登录后重新登录，并在系统设置 → 键盘 → 文本输入 → 编辑中添加句外。"
             case .inputMethodActive: return "请先用系统输入源菜单切换到 ABC 或苹果拼音，再重新安装句外。"
             case .invalidSignature: return "输入法包的完整性检查未通过，原有输入法未被替换。请重新下载。"
             }
