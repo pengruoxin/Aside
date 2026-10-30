@@ -21,6 +21,7 @@ import AsideOffline
     private var sourceBundleID: String?
     private var canInspectSource = false
     private var preferencesObserver: NSObjectProtocol?
+    @MainActor private lazy var explanationPanel = ExplanationPanel()
     @MainActor private func diagnosticIdentity(_ point: String) {
         guard ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] != nil else { return }
         let object = delegate() as AnyObject?
@@ -287,6 +288,7 @@ import AsideOffline
         sourceBundleID = nil
         canInspectSource = false
         panel?.hide()
+        explanationPanel.hide()
     }
     @MainActor private func ownedRange() -> NSRange? {
         guard active, let target, let start = sourceStart else { imeDiagnostic("range: no active anchor"); return nil }
@@ -356,6 +358,7 @@ import AsideOffline
         guard active else { return }
         let context = rime?.context ?? RimeEngine.Context()
         let preedit = englishMode ? "" : context.preedit
+        if !preedit.isEmpty || composition.preview == nil { explanationPanel.hide() }
         if !preedit.isEmpty, !context.candidates.isEmpty {
             panel?.setSelectionKeys([18, 19, 20, 21, 23, 22, 26].map { NSNumber(value: $0) })
             panel?.update()
@@ -425,8 +428,15 @@ import AsideOffline
                 else if let preview = composition.preview {
                     panel?.update()
                     panel?.show(kIMKLocateCandidatesBelowHint)
-                    panel?.showAnnotation(NSAttributedString(string: preview.expression + "\n\n" + preview.explanation))
-                    imeDiagnostic("annotation shown")
+                    let revision = composition.revision
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        guard let self, self.active, self.composition.revision == revision,
+                              self.composition.preview == preview, self.panel?.isVisible() == true,
+                              let frame = self.panel?.candidateFrame() else { return }
+                        if self.explanationPanel.show(preview, style: OfflineConfiguration.shared.style, candidateFrame: frame) {
+                            imeDiagnostic("annotation shown")
+                        }
+                    }
                 }
             }
         }

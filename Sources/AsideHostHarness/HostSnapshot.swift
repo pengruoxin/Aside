@@ -49,6 +49,17 @@ import AsideCore
                 || owner == InputSourcePreferences.bundleID.lowercased()
                 || owner.contains("inputmethodkit")
         }
+        if name == "english-explanation" {
+            let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] ?? ""
+            let trace = (try? String(contentsOfFile: path)) ?? ""
+            let suffix = trace.components(separatedBy: "explanation window: ").last ?? ""
+            let identifier = UInt32(suffix.prefix(while: { $0.isNumber }))
+            guard windows.contains(where: {
+                $0.owningApplication?.bundleIdentifier == InputSourcePreferences.bundleID
+                    && ($0.windowID == identifier || $0.title == "句外讲解")
+                    && $0.frame.width >= 200 && $0.frame.height >= 80
+            }) else { throw NSError(domain: "Aside.ExplanationFixture", code: 1) }
+        }
         guard !windows.isEmpty else { return }
         var rectangle = windows[0].frame
         for window in windows.dropFirst() { rectangle = rectangle.union(window.frame) }

@@ -499,6 +499,7 @@ import AsideOffline
             if (try? await web.evaluateJavaScript("document.getElementById('chat') !== null")) as? Bool == true { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
+        try await focusWebWindow(window, web: web)
         for field in ["search", "chat"] {
             try await selectMode(".English")
             _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('\(field)');window.asideProbeField.focus()")
@@ -540,6 +541,7 @@ import AsideOffline
             if (try? await web.evaluateJavaScript("document.getElementById('b')!==null")) as? Bool == true { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
+        try await focusWebWindow(window, web: web)
         try await selectMode(".English")
         _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('a');asideProbeField.focus()")
         try await clickWebField(web, window: window)
@@ -582,15 +584,32 @@ import AsideOffline
         return trace.components(separatedBy: "activateServer called; text client: true").count
             + trace.components(separatedBy: "mode ready Chinese").count
     }
+    @MainActor private static func focusedInputContext() -> NSTextInputContext? {
+        (NSApp.keyWindow?.firstResponder as? NSView)?.inputContext ?? NSTextInputContext.current
+    }
+    @MainActor private static func focusWebWindow(_ window: NSWindow, web: WKWebView) async throws {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        for _ in 0..<50 {
+            if NSApp.isActive, window.isKeyWindow {
+                window.makeFirstResponder(web)
+                return
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        throw Failure.noTextClient
+    }
     @MainActor private static func waitForClientActivation(after count: Int) async throws {
         for attempt in 0..<100 {
             if clientActivations() > count { return }
             // An already active IMK session need not activate again. Confirm
             // the host's current source instead of requiring an extra callback.
-            if attempt >= 20, NSTextInputContext.current?.selectedKeyboardInputSource == InputSourcePreferences.bundleID + ".Chinese",
+            if attempt >= 20, focusedInputContext()?.selectedKeyboardInputSource == InputSourcePreferences.bundleID + ".Chinese",
                !NSRunningApplication.runningApplications(withBundleIdentifier: InputSourcePreferences.bundleID).isEmpty { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
+        print("Input context readiness:", NSApp.isActive, NSApp.keyWindow?.isKeyWindow as Any,
+              String(describing: NSApp.keyWindow?.firstResponder), focusedInputContext()?.selectedKeyboardInputSource as Any)
         throw Failure.registration
     }
     @MainActor private static func selectMode(_ suffix: String) async throws {
@@ -599,12 +618,14 @@ import AsideOffline
         for source in sources {
             if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),
                (unsafeBitCast(value, to: CFString.self) as String).hasSuffix(suffix) {
+                let context = focusedInputContext()
+                context?.activate()
                 let status = TISSelectInputSource(source)
                 if status == noErr {
                     // TIS is process-global; AppKit may restore a per-document
                     // source when a new WK field acquires focus. Set the actual
                     // focused input context, as the system input menu does.
-                    NSTextInputContext.current?.selectedKeyboardInputSource = InputSourcePreferences.bundleID + suffix
+                    context?.selectedKeyboardInputSource = InputSourcePreferences.bundleID + suffix
                 }
                 print("Select mode", suffix, "status:", status)
                 if let enabled = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) {
