@@ -49,7 +49,7 @@ public struct OfflineSettingsView: View {
                 }.pickerStyle(.segmented)
                 Toggle("写完一句自动给出英文候选", isOn: $settings.automatic)
                 Toggle("暂停学习提示（打字仍可用）", isOn: $settings.paused)
-                Text("无标点时按 Control–Option–T 主动处理。学习模式点英文候选看讲解；英文输出模式用 Tab 或点候选采用。有些应用仅支持学习提示。Return 不会自动采用英文。")
+                Text("无标点时按 Control–Option–T 主动处理。学习模式双击英文候选看讲解；英文输出模式用 Tab 或双击候选采用。有些应用仅支持学习提示。Return 不会自动采用英文。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("完全本机处理") {
@@ -78,6 +78,7 @@ public struct OfflineSettingsView: View {
                         .disabled(testing)
                     if !settings.customModel.isEmpty {
                         Button("恢复包内模型") {
+                            settings.engine = "bundled"
                             settings.customModel = ""
                             result = "已恢复包内语言模型。"
                         }.disabled(testing)
@@ -110,6 +111,7 @@ public struct OfflineSettingsView: View {
                 result = "所选文件不是有效 GGUF 文件。"; return
             }
         } catch { result = error.localizedDescription; return }
+        settings.engine = "bundled"
         settings.customModel = url.path
         RuntimeManager.shared.stop()
         result = "已选择本机模型；请测试是否与推理引擎兼容。"

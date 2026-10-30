@@ -450,14 +450,14 @@ import AsideOffline
         }
         guard readyCount() > before, editor.string == "你好" else { throw Failure.offlinePreview }
         try await HostSnapshot.capture("learning-candidate", host: window)
-        try await HostSnapshot.clickCandidate(host: window)
+        try await HostSnapshot.clickCandidate(host: window, clicks: 2)
         try await Task.sleep(nanoseconds: 500_000_000)
         try await HostSnapshot.capture("learning-click-result", host: window)
         guard ((try? String(contentsOfFile: path)) ?? "").contains("annotation shown"), editor.string == "你好" else { throw Failure.offlinePreview }
         try await HostSnapshot.capture("english-explanation", host: window)
         try await send("\r", window: window)
         guard delegate.submissions.count == 3, delegate.submissions.last == "你好" else { throw Failure.returnWasNotForwarded }
-        print("Learning mode passed: clicked native candidate showed Chinese annotation; Return submitted only the original Chinese.")
+        print("Learning mode passed: double-clicked native candidate showed Chinese annotation; Return submitted only the original Chinese.")
         settings.englishOutput = true
         try await Task.sleep(nanoseconds: 500_000_000)
         for character in "nihao " { try await send(String(character), window: window) }
@@ -507,11 +507,15 @@ import AsideOffline
             try await selectMode(".Chinese")
             try await waitForClientActivation(after: activation)
             for character in "nihao " { try await send(String(character), window: window) }
-            let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String
+            let value = try await waitForText("你好", web: web, script: "document.getElementById('\(field)').value")
             print("WebKit field", field, "value:", value ?? "nil", "focused:", try await web.evaluateJavaScript("document.activeElement.id"), "source:", web.inputContext?.selectedKeyboardInputSource ?? "nil")
             guard value == "你好" else { throw Failure.liveWebInput }
             try await send("\r", window: window)
-            try await Task.sleep(nanoseconds: 200_000_000)
+            let expected = field == "search" ? 1 : 2
+            for _ in 0..<100 {
+                if (try await web.evaluateJavaScript("window.sent.length")) as? Int == expected { break }
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
         }
         let sent = try await web.evaluateJavaScript("window.sent") as? [[String]]
         guard sent == [["search", "你好"], ["chat", "你好"]] else { throw Failure.returnWasNotForwarded }
@@ -543,6 +547,7 @@ import AsideOffline
         try await selectMode(".Chinese")
         try await waitForClientActivation(after: activation)
         for character in "nihao " { try await send(String(character), window: window) }
+        guard try await waitForText("你好", web: web, script: "document.getElementById('a').value") == "你好" else { throw Failure.liveWebInput }
         guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.offlinePreview }
         func count(_ marker: String) -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: marker).count }
         let before = count("preview ready"), errors = count("translation failed:")
@@ -561,6 +566,15 @@ import AsideOffline
         let values = try await web.evaluateJavaScript("[document.getElementById('a').value,document.getElementById('b').value]") as? [String]
         guard values == ["你好", "你好"] else { throw Failure.hostSelectionChanged }
         print("Identical text/caret in two WebKit fields did not authorize applying the old field's English preview.")
+    }
+    @MainActor private static func waitForText(_ expected: String, web: WKWebView, script: String) async throws -> String? {
+        var value: String?
+        for _ in 0..<100 {
+            value = try await web.evaluateJavaScript(script) as? String
+            if value == expected { return value }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return value
     }
     private static func clientActivations() -> Int {
         guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { return 0 }

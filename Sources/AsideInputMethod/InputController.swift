@@ -390,7 +390,7 @@ import AsideOffline
                 guard !self.canInspectSource || self.ownedRange() != nil else { self.forgetSentence(); return }
                 imeDiagnostic("preview ready")
                 settings.status = settings.englishOutput && self.ownedRange() != nil
-                    ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
+                    ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 双击英文候选看讲解"
                 self.refreshCandidates()
             } catch {
                 guard let self, self.active, self.composition.revision == token, !Task.isCancelled else { return }
