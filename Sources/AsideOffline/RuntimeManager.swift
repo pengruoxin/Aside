@@ -102,7 +102,10 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             "type": "object", "additionalProperties": false, "required": ["expression", "explanation"],
             "properties": [
                 "expression": ["type": "string", "minLength": 1, "maxLength": 5000],
-                "explanation": ["type": "string", "pattern": "^[一-龥].{0,199}$"]
+                // Let JSON's string grammar escape quotes/backslashes. A regex
+                // containing `.` bypasses that protection in llama's converter.
+                // Chinese-language validation remains in WritingResult.
+                "explanation": ["type": "string", "minLength": 1, "maxLength": 300]
             ]
         ]
         let payload: [String: Any] = [

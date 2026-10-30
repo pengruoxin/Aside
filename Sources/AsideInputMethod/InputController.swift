@@ -13,6 +13,9 @@ import AsideOffline
     private var generation: Task<Void, Never>?
     private var modeID = ""
     private var hasMarkedText = false
+    private var sourceStart: Int?
+    private var markedStart: Int?
+    private var documentID: String?
     private var preferencesObserver: NSObjectProtocol?
     deinit {
         generation?.cancel()
@@ -35,6 +38,9 @@ import AsideOffline
             if active { commitOriginal() }
             generation?.cancel()
             composition.reset()
+            sourceStart = nil
+            markedStart = nil
+            documentID = nil
             hasMarkedText = false
             target = sender as? IMKTextInput
             active = true
@@ -85,6 +91,10 @@ import AsideOffline
             composition.reset()
         }
         target = client
+        if rime?.context.preedit.isEmpty ?? true,
+           !composition.source.isEmpty, ownedRange() == nil {
+            forgetSentence()
+        }
         let oldMode = englishMode
         updateMode()
         if oldMode != englishMode { commitOriginal() }
@@ -150,9 +160,9 @@ import AsideOffline
                 return true
             }
             guard !composition.source.isEmpty else { return false }
-            composition.backspace()
-            refresh()
-            return true
+            // The host owns confirmed text, including its native deletion/undo.
+            forgetSentence()
+            return false
         }
         guard let chars = event.characters, !chars.isEmpty else { return false }
         let functionKey = chars.unicodeScalars.contains { (0xF700...0xF8FF).contains($0.value) }
@@ -167,8 +177,9 @@ import AsideOffline
         if !englishMode, let rime, rime.available {
             let special: [UInt16: Int32] = [123: 0xff51, 124: 0xff53, 125: 0xff54, 126: 0xff52, 116: 0xff55, 121: 0xff56, 117: 0xffff]
             let value = special[event.keyCode] ?? chars.unicodeScalars.first.map { Int32($0.value) } ?? 0
-            if rime.process(value, modifiers: flags.contains(.shift) ? 1 : 0) {
-                consumeCommit()
+            let handled = rime.process(value, modifiers: flags.contains(.shift) ? 1 : 0)
+            consumeCommit() // Rime may commit before declining punctuation.
+            if handled {
                 composition.invalidate()
                 refresh()
                 requestTranslation(manual: false)
@@ -182,7 +193,7 @@ import AsideOffline
         }
         let punctuation = [",": "，", ".": "。", "?": "？", "!": "！", ":": "：", ";": "；"]
         let text = englishMode ? chars : (punctuation[chars] ?? chars)
-        composition.append(text)
+        appendConfirmed(text)
         if composition.source.count > 600 {
             commitOriginal()
             OfflineConfiguration.shared.status = "本段较长，已正常提交原文；请按句处理。"
@@ -194,7 +205,38 @@ import AsideOffline
     }
 
     @MainActor private func consumeCommit() {
-        if let text = rime?.takeCommit(), !text.isEmpty { composition.append(text) }
+        if let text = rime?.takeCommit(), !text.isEmpty { appendConfirmed(text) }
+    }
+    @MainActor private func appendConfirmed(_ text: String) {
+        guard let target else { return }
+        if composition.source.isEmpty {
+            let start = markedStart ?? target.selectedRange().location
+            sourceStart = start == NSNotFound ? nil : start
+            documentID = target.uniqueClientIdentifierString()
+        }
+        target.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        hasMarkedText = false
+        markedStart = nil
+        composition.append(text)
+    }
+    @MainActor private func forgetSentence() {
+        generation?.cancel()
+        composition.reset()
+        sourceStart = nil
+        documentID = nil
+        panel?.hide()
+    }
+    @MainActor private func ownedRange() -> NSRange? {
+        guard active, let target, let start = sourceStart,
+              let documentID, !documentID.isEmpty,
+              target.uniqueClientIdentifierString() == documentID,
+              let range = CommittedTextRange.candidate(start: start,
+                utf16Length: composition.source.utf16.count,
+                selection: target.selectedRange(), marked: target.markedRange()),
+              let substring = target.attributedSubstring(from: range),
+              substring.string == composition.source,
+              substring.length == range.length else { return nil }
+        return range
     }
     @MainActor private func confirmPinyin() {
         if !(rime?.context.preedit.isEmpty ?? true) {
@@ -206,22 +248,25 @@ import AsideOffline
     @MainActor private func commitOriginal() {
         generation?.cancel()
         confirmPinyin()
-        let original = composition.takeOriginal()
-        panel?.hide()
-        if !original.isEmpty {
-            target?.insertText(original, replacementRange: NSRange(location: NSNotFound, length: 0))
-        } else if hasMarkedText {
+        if hasMarkedText {
             target?.setMarkedText("", selectionRange: NSRange(location: 0, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         }
         hasMarkedText = false
+        markedStart = nil
+        forgetSentence()
     }
     @MainActor private func adoptEnglish() {
         generation?.cancel()
-        guard let text = composition.takeEnglish() else { return }
+        guard let range = ownedRange(), let text = composition.preview?.expression else {
+            forgetSentence()
+            OfflineConfiguration.shared.status = "输入位置已变化，已保留原文。请在当前句子重新生成。"
+            return
+        }
         rime?.clear()
         panel?.hide()
-        target?.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        target?.insertText(text, replacementRange: range)
         hasMarkedText = false
+        forgetSentence()
     }
     @MainActor private func refresh() {
         guard active, let target else { return }
@@ -229,16 +274,24 @@ import AsideOffline
         let preedit = englishMode ? "" : context.preedit
         let text = composition.hostMarkedText(preedit: preedit)
         // An empty refresh must not replace a host selection we do not own.
-        guard !text.isEmpty || hasMarkedText else { panel?.hide(); return }
+        if text.isEmpty && !hasMarkedText { refreshCandidates(); return }
+        if !text.isEmpty && !hasMarkedText { markedStart = target.selectedRange().location }
         let marked = NSMutableAttributedString(string: text)
         if !preedit.isEmpty {
             marked.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue,
-                                range: NSRange(location: composition.source.utf16.count, length: preedit.utf16.count))
+                                range: NSRange(location: 0, length: preedit.utf16.count))
         }
         let prefix = String(decoding: preedit.utf8.prefix(max(0, context.cursor)), as: UTF8.self)
-        let cursor = composition.source.utf16.count + (preedit.isEmpty ? 0 : prefix.utf16.count)
+        let cursor = preedit.isEmpty ? 0 : prefix.utf16.count
         target.setMarkedText(marked, selectionRange: NSRange(location: cursor, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         hasMarkedText = !text.isEmpty
+        if !hasMarkedText { markedStart = nil }
+        refreshCandidates()
+    }
+    @MainActor private func refreshCandidates() {
+        guard active else { return }
+        let context = rime?.context ?? RimeEngine.Context()
+        let preedit = englishMode ? "" : context.preedit
         if !preedit.isEmpty, !context.candidates.isEmpty {
             panel?.setSelectionKeys([18, 19, 20, 21, 23, 22, 26].map { NSNumber(value: $0) })
             panel?.update()
@@ -265,9 +318,11 @@ import AsideOffline
                 let result = try await OfflineTranslator.generate(WritingRequest(source: source, style: style))
                 try Task.checkCancellation()
                 guard let self, self.active, self.composition.acceptPreview(result, revision: token) else { return }
+                // An asynchronous result must never write into the host field.
+                guard self.ownedRange() != nil else { self.forgetSentence(); return }
                 imeDiagnostic("preview ready")
                 settings.status = settings.englishOutput ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
-                self.refresh()
+                self.refreshCandidates()
             } catch {
                 guard let self, self.active, self.composition.revision == token, !Task.isCancelled else { return }
                 settings.status = error.localizedDescription

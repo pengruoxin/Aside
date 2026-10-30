@@ -16,7 +16,7 @@ final class CompositionTests: XCTestCase {
         state.append("你好。")
         let token = state.revision
         XCTAssertTrue(state.acceptPreview(try .validated(expression: "Hello.", explanation: "问候。"), revision: token))
-        XCTAssertEqual(state.hostMarkedText(preedit: ""), "你好。")
+        XCTAssertEqual(state.hostMarkedText(preedit: ""), "")
         XCTAssertEqual(state.takeOriginal(), "你好。")
         XCTAssertTrue(state.source.isEmpty)
     }
@@ -48,6 +48,7 @@ final class CompositionTests: XCTestCase {
         var state = SentenceComposition()
         for part in ["This ", "method ", "may work."] { state.append(part) }
         XCTAssertEqual(state.completeSentence, "This method may work.")
-        XCTAssertEqual(state.hostMarkedText(preedit: "ni"), "This method may work.ni")
+        XCTAssertEqual(state.hostMarkedText(preedit: "ni"), "ni")
+        XCTAssertEqual(state.source, "This method may work.")
     }
 }

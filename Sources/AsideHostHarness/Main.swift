@@ -94,7 +94,6 @@ import AsideOffline
         var state = SentenceComposition()
         state.append("你好。")
         _ = state.acceptPreview(try .validated(expression: "Hello.", explanation: "问候。"), revision: state.revision)
-        editor.setMarkedText(state.hostMarkedText(preedit: ""), selectedRange: NSRange(location: 3, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         editor.insertText(state.takeOriginal(), replacementRange: NSRange(location: NSNotFound, length: 0))
         guard editor.string == "你好。", !editor.string.contains("Hello") else { throw Failure.previewLeaked }
         window.close()
@@ -119,8 +118,7 @@ import AsideOffline
             var state = SentenceComposition()
             state.append("我们可以先试一下。")
             _ = state.acceptPreview(try .validated(expression: "We could try it first.", explanation: "先尝试。"), revision: state.revision)
-            let text = state.hostMarkedText(preedit: "")
-            client.setMarkedText(text, selectedRange: NSRange(location: text.utf16.count, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            let text = state.source
             client.insertText(state.takeOriginal(), replacementRange: NSRange(location: NSNotFound, length: 0))
             try await Task.sleep(nanoseconds: 200_000_000)
             let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String
@@ -192,7 +190,7 @@ import AsideOffline
         try await HostSnapshot.capture("pinyin-candidates", host: window)
         try await send(" ", window: window)
         try await Task.sleep(nanoseconds: 300_000_000)
-        guard editor.string == "你好" else {
+        guard editor.string == "你好", !editor.hasMarkedText() else {
             print("Live Chinese value:", editor.string)
             throw Failure.liveChinese
         }
@@ -266,21 +264,22 @@ import AsideOffline
         print("Baidu event trace after typing:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
         print("Baidu context source:", web.inputContext?.selectedKeyboardInputSource ?? "nil")
         try await HostSnapshot.capture("baidu-input", host: window)
-        guard value == "你好" else { throw Failure.liveBaidu }
-        try await send("\r", window: window)
+        if value == "你好" { try await send("\r", window: window) }
         for _ in 0..<40 {
             if observer.searches > 0 { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        if observer.searches != 1 {
+        if value != "你好" || observer.searches != 1 {
             print("Baidu Aside event diagnostics:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
             let query = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM.ITABC"] as CFDictionary
             let sources = TISCreateInputSourceList(query, true).takeRetainedValue() as! [TISInputSource]
             guard let apple = sources.first, TISSelectInputSource(apple) == noErr else { throw Failure.liveBaidu }
             _ = try await web.evaluateJavaScript(focus)
+            try await clickWebField(web, window: window)
             _ = try await web.evaluateJavaScript("window.asideKeys=[]")
             try await Task.sleep(nanoseconds: 700_000_000)
             for character in "nihao " { try await send(String(character), window: window) }
+            print("Baidu Apple control typed value:", try await web.evaluateJavaScript("document.activeElement.value"))
             try await send("\r", window: window)
             try await Task.sleep(nanoseconds: 1_000_000_000)
             print("Baidu Apple event diagnostics:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))

@@ -24,7 +24,8 @@ public struct SentenceComposition {
         preview = value
         return true
     }
-    public func hostMarkedText(preedit: String) -> String { source + preedit }
+    /// Confirmed source is already in the host; only unfinished pinyin is marked.
+    public func hostMarkedText(preedit: String) -> String { preedit }
     public mutating func takeOriginal() -> String {
         let text = source
         reset()
