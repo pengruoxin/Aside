@@ -51,7 +51,8 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
             let gpuLayers = ProcessInfo.processInfo.environment["ASIDE_CPU_ONLY"] == "1" ? "0" : "99"
             child.executableURL = launcher
             child.arguments = [executable.path, "--model", model.path, "--host", "127.0.0.1", "--port", String(port), "--ctx-size", "4096",
-                               "--parallel", "1", "--threads", "4", "--n-gpu-layers", gpuLayers, "--no-webui"]
+                               "--parallel", "1", "--threads", "4", "--n-gpu-layers", gpuLayers,
+                               "--no-jinja", "--skip-chat-parsing", "--no-webui"]
             child.environment = ["PATH": "/usr/bin:/bin", "HOME": NSHomeDirectory(), "LLAMA_API_KEY": key]
             child.standardOutput = FileHandle.nullDevice
             // Diagnostics are restricted to the fixed CI fixtures, never user input.
@@ -119,6 +120,10 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
         defer { session.invalidateAndCancel() }
         let (data, response) = try await session.data(for: request)
         try Task.checkCancellation()
+        if CommandLine.arguments.contains("--offline-smoke-test"), (response as? HTTPURLResponse)?.statusCode != 200 {
+            print("Fixed offline fixture HTTP error:", (response as? HTTPURLResponse)?.statusCode ?? -1,
+                  String(decoding: data.prefix(4000), as: UTF8.self))
+        }
         guard (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 128_000,
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = object["choices"] as? [[String: Any]],

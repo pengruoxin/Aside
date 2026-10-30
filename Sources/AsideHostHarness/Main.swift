@@ -253,6 +253,8 @@ import AsideOffline
         try await Task.sleep(nanoseconds: 1_000_000_000)
         _ = try await web.evaluateJavaScript(focus)
         try await clickWebField(web, window: window)
+        web.inputContext?.activate()
+        web.inputContext?.selectedKeyboardInputSource = InputSourcePreferences.bundleID + ".Chinese"
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 500_000_000)
         print("Baidu native focus:", NSApp.isActive, window.isKeyWindow, String(describing: window.firstResponder))
@@ -261,6 +263,8 @@ import AsideOffline
         for character in "nihao " { try await send(String(character), window: window) }
         let value = try await web.evaluateJavaScript("document.activeElement.value") as? String
         print("Baidu fixture value:", value ?? "nil")
+        print("Baidu event trace after typing:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
+        print("Baidu context source:", web.inputContext?.selectedKeyboardInputSource ?? "nil")
         try await HostSnapshot.capture("baidu-input", host: window)
         guard value == "你好" else { throw Failure.liveBaidu }
         try await send("\r", window: window)
