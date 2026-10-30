@@ -381,6 +381,8 @@ import AsideOffline
         let local = NSPoint(x: point[0], y: web.isFlipped ? point[1] : web.bounds.height - point[1])
         let screen = window.convertPoint(toScreen: web.convert(local, to: nil))
         let location = CGPoint(x: screen.x, y: (NSScreen.screens.first?.frame.maxY ?? 0) - screen.y)
+        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: location, mouseButton: .left)?.post(tap: .cghidEventTap)
+        try await Task.sleep(nanoseconds: 150_000_000)
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: location, mouseButton: .left)!
             event.setIntegerValueField(.mouseEventClickState, value: 1)
@@ -550,7 +552,9 @@ import AsideOffline
     }
     private static func clientActivations() -> Int {
         guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { return 0 }
-        return ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "activateServer called; text client: true").count
+        let trace = (try? String(contentsOfFile: path)) ?? ""
+        return trace.components(separatedBy: "activateServer called; text client: true").count
+            + trace.components(separatedBy: "mode ready Chinese").count
     }
     @MainActor private static func waitForClientActivation(after count: Int) async throws {
         for _ in 0..<100 {

@@ -90,6 +90,7 @@ import AsideOffline
             modeID = identifier
             englishMode = identifier.hasSuffix(".English")
             imeDiagnostic(englishMode ? "mode callback English" : "mode callback Chinese")
+            if active { imeDiagnostic(englishMode ? "mode ready English" : "mode ready Chinese") }
         }
     }
 

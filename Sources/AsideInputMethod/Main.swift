@@ -15,7 +15,14 @@ func imeDiagnostic(_ message: String) {
 
 @MainActor final class InputMethodDelegate: NSObject, NSApplicationDelegate {
     var server: IMKServer?
+    private var diagnosticMouseMonitor: Any?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] != nil {
+            diagnosticMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { event in
+                imeDiagnostic("local candidate mouse event: \(event.type.rawValue); window: \(event.windowNumber)")
+                return event
+            }
+        }
         imeDiagnostic("application launched; controller available: \(NSClassFromString("AsideInputController") != nil)")
         NSLog("Aside input method starting; controller available: %@", NSClassFromString("AsideInputController") == nil ? "no" : "yes")
         fputs("Aside applicationDidFinishLaunching; controller available: \(NSClassFromString("AsideInputController") != nil)\n", stderr)

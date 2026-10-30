@@ -16,6 +16,9 @@ import AsideCore
         }
         let point = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
         print("Clicking native candidate window:", candidate.windowID, owner.bundleIdentifier, candidate.frame)
+        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+        try await Task.sleep(nanoseconds: 150_000_000)
+        print("Pointer after candidate move:", CGEvent(source: nil)?.location as Any)
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)!
             event.setIntegerValueField(.mouseEventClickState, value: 1)

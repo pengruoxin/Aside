@@ -30,7 +30,7 @@
       <key>tsInputModeIsVisibleKey</key><true/>
       <key>tsInputModeScriptKey</key><string>smUnicodeScript</string>
       <key>tsInputModePrimaryInScriptKey</key><true/>
-      <key>tsInputModeMenuIconFileKey</key><string>Aside.icns</string>
+      <key>tsInputModeMenuIconFileKey</key><string>AsideChinese.icns</string>
     </dict>
     <key>io.github.pengruoxin.inputmethod.Aside.English</key><dict>
       <key>TISInputSourceID</key><string>io.github.pengruoxin.inputmethod.Aside.English</string>
@@ -41,7 +41,7 @@
       <key>tsInputModeIsVisibleKey</key><true/>
       <key>tsInputModeIsASCIICapableKey</key><true/>
       <key>tsInputModeScriptKey</key><string>smRoman</string>
-      <key>tsInputModeMenuIconFileKey</key><string>Aside.icns</string>
+      <key>tsInputModeMenuIconFileKey</key><string>AsideEnglish.icns</string>
     </dict>
   </dict>
   <key>tsVisibleInputModeOrderedArrayKey</key><array>

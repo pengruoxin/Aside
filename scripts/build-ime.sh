@@ -42,6 +42,11 @@ cp .build-deps/llama/LICENSE "$ime/Contents/Resources/Licenses/llama.cpp-MIT.txt
 cp LICENSE "$ime/Contents/Resources/Licenses/Aside-MIT.txt"
 swift scripts/make-icon.swift dist
 iconutil --convert icns dist/Aside.iconset --output "$ime/Contents/Resources/Aside.icns"
+mkdir -p dist/smoke
+for mode in Chinese English; do
+  iconutil --convert icns "dist/Aside$mode.iconset" --output "$ime/Contents/Resources/Aside$mode.icns"
+  cp "dist/Aside$mode.iconset/icon_16x16@2x.png" "dist/smoke/mode-$mode.png"
+done
 if [[ "${ASIDE_INCLUDE_MODEL:-0}" == 1 ]]; then
   mkdir -p .build-deps/models "$ime/Contents/Resources/Models"
   model=.build-deps/models/qwen2.5-1.5b-instruct-q4_k_m.gguf
