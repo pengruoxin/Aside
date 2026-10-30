@@ -97,9 +97,18 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
         request.timeoutInterval = 180
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
+        let schema: [String: Any] = [
+            "type": "object", "additionalProperties": false, "required": ["expression", "explanation"],
+            "properties": [
+                "expression": ["type": "string", "minLength": 1, "maxLength": 5000],
+                "explanation": ["type": "string", "pattern": "^[一-龥].{0,199}$"]
+            ]
+        ]
         let payload: [String: Any] = [
             "messages": [["role": "system", "content": writing.systemPrompt], ["role": "user", "content": writing.source]],
-            "stream": false, "temperature": 0.2, "max_tokens": min(1024, max(256, writing.source.count * 2 + 128)), "response_format": ["type": "json_object"]
+            "stream": false, "temperature": 0, "seed": 0,
+            "max_tokens": min(1024, max(256, writing.source.count * 2 + 128)),
+            "response_format": ["type": "json_object", "schema": schema]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let config = URLSessionConfiguration.ephemeral
@@ -116,6 +125,7 @@ private final class RejectRedirects: NSObject, URLSessionTaskDelegate {
               let message = choices.first?["message"] as? [String: Any],
               let text = message["content"] as? String else { throw WritingError.invalidResult }
         lastUsed = Date()
+        if CommandLine.arguments.contains("--offline-smoke-test") { print("Fixed offline fixture JSON:", text) }
         return try WritingResult.parseJSON(text)
     }
 }

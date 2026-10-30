@@ -250,12 +250,16 @@ import AsideOffline
         }
         try await selectMode(".Chinese")
         try await Task.sleep(nanoseconds: 700_000_000)
-        window.makeFirstResponder(web)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
         _ = try await web.evaluateJavaScript(focus)
+        try await clickWebField(web, window: window)
+        try await selectMode(".Chinese")
+        try await Task.sleep(nanoseconds: 500_000_000)
+        print("Baidu native focus:", NSApp.isActive, window.isKeyWindow, String(describing: window.firstResponder))
         _ = try await web.evaluateJavaScript("window.asideKeys=[];for(const name of ['keydown','keyup','compositionstart','compositionend'])document.addEventListener(name,e=>asideKeys.push([e.type,e.key,e.keyCode,e.isComposing]),true)")
         print("Baidu focused element:", try await web.evaluateJavaScript("document.activeElement.tagName+'#'+document.activeElement.id"))
         for character in "nihao " { try await send(String(character), window: window) }
-        let value = try await web.evaluateJavaScript("window.asideProbeField.value") as? String
+        let value = try await web.evaluateJavaScript("document.activeElement.value") as? String
         print("Baidu fixture value:", value ?? "nil")
         try await HostSnapshot.capture("baidu-input", host: window)
         guard value == "你好" else { throw Failure.liveBaidu }
@@ -287,6 +291,21 @@ import AsideOffline
         if let folder = ProcessInfo.processInfo.environment["ASIDE_SMOKE_OUTPUT"] {
             try Data(message.utf8).write(to: URL(fileURLWithPath: folder).appendingPathComponent("baidu.txt"))
         }
+    }
+
+    @MainActor private static func clickWebField(_ web: WKWebView, window: NSWindow) async throws {
+        let point = try await web.evaluateJavaScript("(() => {const r=window.asideProbeField.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2];})()") as? [Double]
+        guard let point, point.count == 2 else { throw Failure.liveBaidu }
+        let local = NSPoint(x: point[0], y: web.isFlipped ? point[1] : web.bounds.height - point[1])
+        let screen = window.convertPoint(toScreen: web.convert(local, to: nil))
+        let location = CGPoint(x: screen.x, y: (NSScreen.screens.first?.frame.maxY ?? 0) - screen.y)
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: location, mouseButton: .left)!
+            event.setIntegerValueField(.mouseEventClickState, value: 1)
+            event.postToPid(getpid())
+            try await Task.sleep(nanoseconds: 60_000_000)
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
     }
 
     @MainActor private final class BaiduNavigation: NSObject, WKNavigationDelegate, WKUIDelegate {
