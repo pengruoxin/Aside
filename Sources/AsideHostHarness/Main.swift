@@ -560,8 +560,12 @@ import AsideOffline
             + trace.components(separatedBy: "mode ready Chinese").count
     }
     @MainActor private static func waitForClientActivation(after count: Int) async throws {
-        for _ in 0..<100 {
+        for attempt in 0..<100 {
             if clientActivations() > count { return }
+            // An already active IMK session need not activate again. Confirm
+            // the host's current source instead of requiring an extra callback.
+            if attempt >= 20, NSTextInputContext.current?.selectedKeyboardInputSource == InputSourcePreferences.bundleID + ".Chinese",
+               !NSRunningApplication.runningApplications(withBundleIdentifier: InputSourcePreferences.bundleID).isEmpty { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         throw Failure.registration
@@ -573,6 +577,12 @@ import AsideOffline
             if let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceID),
                (unsafeBitCast(value, to: CFString.self) as String).hasSuffix(suffix) {
                 let status = TISSelectInputSource(source)
+                if status == noErr {
+                    // TIS is process-global; AppKit may restore a per-document
+                    // source when a new WK field acquires focus. Set the actual
+                    // focused input context, as the system input menu does.
+                    NSTextInputContext.current?.selectedKeyboardInputSource = InputSourcePreferences.bundleID + suffix
+                }
                 print("Select mode", suffix, "status:", status)
                 if let enabled = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) {
                     print("Enabled:", CFBooleanGetValue(unsafeBitCast(enabled, to: CFBoolean.self)))
