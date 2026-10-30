@@ -384,7 +384,7 @@ import AsideOffline
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: location, mouseButton: .left)!
             event.setIntegerValueField(.mouseEventClickState, value: 1)
-            event.postToPid(getpid())
+            event.post(tap: .cghidEventTap)
             try await Task.sleep(nanoseconds: 60_000_000)
         }
         try await Task.sleep(nanoseconds: 300_000_000)
@@ -435,8 +435,10 @@ import AsideOffline
             try await Task.sleep(nanoseconds: 250_000_000)
         }
         guard readyCount() > before, editor.string == "你好" else { throw Failure.offlinePreview }
+        try await HostSnapshot.capture("learning-candidate", host: window)
         try await HostSnapshot.clickCandidate(host: window)
         try await Task.sleep(nanoseconds: 500_000_000)
+        try await HostSnapshot.capture("learning-click-result", host: window)
         guard ((try? String(contentsOfFile: path)) ?? "").contains("annotation shown"), editor.string == "你好" else { throw Failure.offlinePreview }
         try await HostSnapshot.capture("english-explanation", host: window)
         try await send("\r", window: window)

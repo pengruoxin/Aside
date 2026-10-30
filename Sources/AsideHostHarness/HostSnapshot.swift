@@ -9,15 +9,19 @@ import AsideCore
         guard let candidate = content.windows.first(where: { window in
             let owner = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
             return window.windowID != CGWindowID(host.windowNumber) && window.frame.height < 180
+                && window.frame.height > 18 && window.frame.width > 50
                 && (owner == InputSourcePreferences.bundleID.lowercased() || owner.contains("inputmethodkit"))
         }), let owner = candidate.owningApplication else {
             throw NSError(domain: "Aside.CandidateFixture", code: 1)
         }
         let point = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
+        print("Clicking native candidate window:", candidate.windowID, owner.bundleIdentifier, candidate.frame)
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)!
             event.setIntegerValueField(.mouseEventClickState, value: 1)
-            event.postToPid(owner.processID)
+            // Mouse events need WindowServer hit testing; the nonactivating
+            // candidate panel has no key window for PID-only event delivery.
+            event.post(tap: .cghidEventTap)
             try await Task.sleep(nanoseconds: 60_000_000)
         }
     }

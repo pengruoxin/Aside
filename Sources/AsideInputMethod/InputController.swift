@@ -382,6 +382,7 @@ import AsideOffline
     }
     override func candidateSelected(_ candidateString: NSAttributedString!) {
         MainActor.assumeIsolated {
+            imeDiagnostic("candidateSelected received")
             guard let candidateString else { return }
             let context = rime?.context ?? RimeEngine.Context()
             if !englishMode, !context.preedit.isEmpty, let index = context.candidates.firstIndex(of: candidateString.string) {
