@@ -15,7 +15,10 @@ import AsideOffline
     private var hasMarkedText = false
     private var sourceStart: Int?
     private var markedStart: Int?
-    private var documentID: String?
+    private var sessionID = UUID()
+    private var sourceSession: UUID?
+    private weak var sourceClient: AnyObject?
+    private var sourceBundleID: String?
     private var canInspectSource = false
     private var preferencesObserver: NSObjectProtocol?
     deinit {
@@ -41,7 +44,10 @@ import AsideOffline
             composition.reset()
             sourceStart = nil
             markedStart = nil
-            documentID = nil
+            sessionID = UUID()
+            sourceSession = nil
+            sourceClient = nil
+            sourceBundleID = nil
             canInspectSource = false
             hasMarkedText = false
             target = sender as? IMKTextInput
@@ -225,7 +231,9 @@ import AsideOffline
         if startsSentence {
             let start = markedStart ?? target.selectedRange().location
             sourceStart = start == NSNotFound ? nil : start
-            documentID = target.uniqueClientIdentifierString()
+            sourceSession = sessionID
+            sourceClient = target as AnyObject
+            sourceBundleID = target.bundleIdentifier()
         }
         target.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         hasMarkedText = false
@@ -243,14 +251,19 @@ import AsideOffline
         generation?.cancel()
         composition.reset()
         sourceStart = nil
-        documentID = nil
+        sourceSession = nil
+        sourceClient = nil
+        sourceBundleID = nil
         canInspectSource = false
         panel?.hide()
     }
     @MainActor private func ownedRange() -> NSRange? {
         guard active, let target, let start = sourceStart else { imeDiagnostic("range: no active anchor"); return nil }
-        guard let documentID, !documentID.isEmpty else { imeDiagnostic("range: client identifier unavailable"); return nil }
-        guard target.uniqueClientIdentifierString() == documentID else { imeDiagnostic("range: client changed"); return nil }
+        // uniqueClientIdentifierString() wraps globallyUniqueString: it creates
+        // a new token per call, not a persistent field identity (IMKInputSession.h).
+        guard sourceSession == sessionID, sourceClient === (target as AnyObject),
+              let sourceBundleID, !sourceBundleID.isEmpty,
+              target.bundleIdentifier() == sourceBundleID else { imeDiagnostic("range: client or session changed"); return nil }
         guard let range = CommittedTextRange.candidate(start: start,
                 utf16Length: composition.source.utf16.count,
                 selection: target.selectedRange(), marked: target.markedRange()) else { imeDiagnostic("range: selection or mark changed"); return nil }
@@ -346,8 +359,8 @@ import AsideOffline
                     ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
                 self.refreshCandidates()
             } catch {
-                imeDiagnostic("translation task ended: \(error.localizedDescription)")
                 guard let self, self.active, self.composition.revision == token, !Task.isCancelled else { return }
+                imeDiagnostic("translation failed: \(error.localizedDescription)")
                 settings.status = error.localizedDescription
             }
         }

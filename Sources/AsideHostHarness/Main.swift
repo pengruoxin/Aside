@@ -423,10 +423,13 @@ import AsideOffline
         for character in "nihao " { try await send(String(character), window: window) }
         guard editor.string == "你好", let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.liveChinese }
         func readyCount() -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "preview ready").count }
+        func failures() -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "translation failed:").count }
         let before = readyCount()
+        let errorsBefore = failures()
         try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
         let deadline = ProcessInfo.processInfo.systemUptime + 240
         while readyCount() == before, ProcessInfo.processInfo.systemUptime < deadline {
+            guard failures() == errorsBefore else { throw Failure.offlinePreview }
             guard editor.string == "你好" else { throw Failure.previewLeaked }
             try await Task.sleep(nanoseconds: 250_000_000)
         }
@@ -442,9 +445,11 @@ import AsideOffline
         try await Task.sleep(nanoseconds: 500_000_000)
         for character in "nihao " { try await send(String(character), window: window) }
         let second = readyCount()
+        let secondErrors = failures()
         try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
         let secondDeadline = ProcessInfo.processInfo.systemUptime + 240
         while readyCount() == second, ProcessInfo.processInfo.systemUptime < secondDeadline {
+            guard failures() == secondErrors else { throw Failure.offlinePreview }
             guard editor.string == "你好" else { throw Failure.previewLeaked }
             try await Task.sleep(nanoseconds: 250_000_000)
         }
@@ -477,9 +482,11 @@ import AsideOffline
             if (try? await web.evaluateJavaScript("document.getElementById('chat') !== null")) as? Bool == true { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
-        try await selectMode(".Chinese")
         for field in ["search", "chat"] {
-            _ = try await web.evaluateJavaScript("document.getElementById('\(field)').focus()")
+            try await selectMode(".English")
+            _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('\(field)');window.asideProbeField.focus()")
+            try await clickWebField(web, window: window)
+            try await selectMode(".Chinese")
             try await Task.sleep(nanoseconds: 500_000_000)
             for character in "nihao " { try await send(String(character), window: window) }
             let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String

@@ -40,7 +40,7 @@ import AsideCore
                 let requiresLogin = try InputSourceRegistration.enableInstalledBundle(destination)
                 installed = true
                 message = requiresLogin
-                    ? "文件已安装，已登记句外输入源。请先保存其他应用的工作，退出登录后重新登录，再在输入源菜单选择“句外拼音”或“句外英文”。当前尚未验证系统切换成功。"
+                    ? "文件已安装，需要重新登录完成启用。请先保存工作，退出登录后重新登录，再在菜单栏输入源中选择“句外拼音”或“句外英文”。"
                     : backup == nil
                     ? "安装完成。请在菜单栏输入源中选择“句外拼音”或“句外英文”。若暂未出现，请退出登录后重新登录，再在键盘设置添加。"
                     : "升级完成，旧版已备份。请先退出登录并重新登录，让 macOS 加载新版本，再切换到句外输入法。"
