@@ -194,6 +194,13 @@ import AsideOffline
             print("Live Chinese value:", editor.string)
             throw Failure.liveChinese
         }
+        if !CommandLine.arguments.contains("--offline-input") {
+            try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
+            try await Task.sleep(nanoseconds: 300_000_000)
+            let trace = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"].flatMap { try? String(contentsOfFile: $0) } ?? ""
+            guard trace.contains("translation requested") else { throw Failure.offlinePreview }
+            print("Committed sentence remained available to the manual translation command.")
+        }
         for char in "nihao " { try await send(String(char), window: window) }
         guard editor.string == "你好你好", !editor.hasMarkedText() else { throw Failure.liveChinese }
         try await send("\u{8}", window: window)
@@ -269,14 +276,20 @@ import AsideOffline
         try await Task.sleep(nanoseconds: 500_000_000)
         let appleValue = try await web.evaluateJavaScript("document.activeElement.value") as? String
         print("Baidu initial Apple control value:", appleValue ?? "nil")
-        guard appleValue == "你好" else { throw Failure.systemControl }
+        guard appleValue == "你好" else {
+            try baiduReport("UNAVAILABLE: Apple Pinyin positive control could not enter 你好 in the same real Baidu field; this environment cannot establish Baidu acceptance.")
+            return
+        }
         try await send("\r", window: window)
         for _ in 0..<50 {
             if observer.searches > 0 { break }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         print("Baidu initial Apple control searches:", observer.searches)
-        guard observer.searches == 1 else { throw Failure.systemControl }
+        guard observer.searches == 1 else {
+            try baiduReport("UNAVAILABLE: Apple Pinyin positive control could not observe one Return search in the real Baidu page; no Baidu acceptance claim.")
+            return
+        }
         observer.searches = 0
         _ = try await web.evaluateJavaScript(focus)
         try await clickWebField(web, window: window)

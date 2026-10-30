@@ -161,7 +161,13 @@ import AsideOffline
             }
             guard !composition.source.isEmpty else { return false }
             // The host owns confirmed text, including its native deletion/undo.
-            forgetSentence()
+            // Predict only a verified single grapheme deletion. The next event
+            // rechecks host text/caret, so unusual host behavior resets safely.
+            if ownedRange() != nil {
+                composition.backspace()
+                panel?.hide()
+                if composition.source.isEmpty { forgetSentence() }
+            } else { forgetSentence() }
             return false
         }
         guard let chars = event.characters, !chars.isEmpty else { return false }
@@ -220,6 +226,10 @@ import AsideOffline
         hasMarkedText = false
         markedStart = nil
         composition.append(text)
+        if composition.source.count > 600 {
+            forgetSentence()
+            OfflineConfiguration.shared.status = "本段较长，已保留原文；请从新句子继续学习。"
+        }
     }
     @MainActor private func forgetSentence() {
         generation?.cancel()
@@ -229,15 +239,14 @@ import AsideOffline
         panel?.hide()
     }
     @MainActor private func ownedRange() -> NSRange? {
-        guard active, let target, let start = sourceStart,
-              let documentID, !documentID.isEmpty,
-              target.uniqueClientIdentifierString() == documentID,
-              let range = CommittedTextRange.candidate(start: start,
+        guard active, let target, let start = sourceStart else { imeDiagnostic("range: no active anchor"); return nil }
+        guard let documentID, !documentID.isEmpty else { imeDiagnostic("range: client identifier unavailable"); return nil }
+        guard target.uniqueClientIdentifierString() == documentID else { imeDiagnostic("range: client changed"); return nil }
+        guard let range = CommittedTextRange.candidate(start: start,
                 utf16Length: composition.source.utf16.count,
-                selection: target.selectedRange(), marked: target.markedRange()),
-              let substring = target.attributedSubstring(from: range),
-              substring.string == composition.source,
-              substring.length == range.length else { return nil }
+                selection: target.selectedRange(), marked: target.markedRange()) else { imeDiagnostic("range: selection or mark changed"); return nil }
+        guard let substring = target.attributedSubstring(from: range) else { imeDiagnostic("range: host substring unavailable"); return nil }
+        guard substring.string == composition.source, substring.length == range.length else { imeDiagnostic("range: host text changed"); return nil }
         return range
     }
     @MainActor private func confirmPinyin() {
@@ -309,6 +318,7 @@ import AsideOffline
         guard !settings.paused, manual || settings.automatic, rime?.context.preedit.isEmpty ?? true else { return }
         let source = composition.source.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !source.isEmpty, source.count <= 600, manual || composition.completeSentence != nil else { return }
+        imeDiagnostic("translation requested")
         let token = composition.revision
         let style = settings.style
         settings.status = "正在本机处理，不影响原文输入与发送…"
@@ -326,6 +336,7 @@ import AsideOffline
                 settings.status = settings.englishOutput ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
                 self.refreshCandidates()
             } catch {
+                imeDiagnostic("translation task ended: \(error.localizedDescription)")
                 guard let self, self.active, self.composition.revision == token, !Task.isCancelled else { return }
                 settings.status = error.localizedDescription
             }
