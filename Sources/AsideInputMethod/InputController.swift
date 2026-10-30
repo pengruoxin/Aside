@@ -354,7 +354,10 @@ import AsideOffline
             panel?.update()
             panel?.show(kIMKLocateCandidatesBelowHint)
         } else if composition.preview != nil {
-            panel?.setSelectionKeys([])
+            // IMK uses this array's count as the number of selectable slots.
+            // An empty array can paint a candidate without a mouse-selectable
+            // cell. Keep one slot; ordinary digits remain host text in process().
+            panel?.setSelectionKeys([NSNumber(value: 18)])
             panel?.update()
             panel?.show(kIMKLocateCandidatesBelowHint)
         } else { panel?.hide() }
