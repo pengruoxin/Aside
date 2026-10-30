@@ -21,6 +21,12 @@ import AsideOffline
     private var sourceBundleID: String?
     private var canInspectSource = false
     private var preferencesObserver: NSObjectProtocol?
+    @MainActor private func diagnosticIdentity(_ point: String) {
+        guard ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] != nil else { return }
+        let object = delegate() as AnyObject?
+        let description = object.map { "\(type(of: $0)) \(ObjectIdentifier($0))" } ?? "nil"
+        imeDiagnostic("\(point): controller \(ObjectIdentifier(self)); delegate \(description); active \(active)")
+    }
     deinit {
         generation?.cancel()
         if let preferencesObserver { DistributedNotificationCenter.default().removeObserver(preferencesObserver) }
@@ -39,6 +45,7 @@ import AsideOffline
     override func activateServer(_ sender: Any!) {
         imeDiagnostic("activateServer called; text client: \(sender is IMKTextInput)")
         MainActor.assumeIsolated {
+            diagnosticIdentity("activate")
             if active { commitOriginal() }
             generation?.cancel()
             composition.reset()
@@ -394,6 +401,7 @@ import AsideOffline
     }
     override func candidates(_ sender: Any!) -> [Any]! {
         MainActor.assumeIsolated {
+            diagnosticIdentity("candidates")
             let context = rime?.context ?? RimeEngine.Context()
             if !englishMode, !context.preedit.isEmpty { return context.candidates }
             if let preview = composition.preview {
@@ -405,6 +413,7 @@ import AsideOffline
     override func candidateSelected(_ candidateString: NSAttributedString!) {
         MainActor.assumeIsolated {
             imeDiagnostic("candidateSelected received")
+            diagnosticIdentity("selected")
             guard let candidateString else { return }
             let context = rime?.context ?? RimeEngine.Context()
             if !englishMode, !context.preedit.isEmpty, let index = context.candidates.firstIndex(of: candidateString.string) {
@@ -424,6 +433,7 @@ import AsideOffline
     }
     override func candidateSelectionChanged(_ candidateString: NSAttributedString!) {
         MainActor.assumeIsolated {
+            diagnosticIdentity("selection changed")
             guard let text = candidateString?.string else { return }
             let context = rime?.context ?? RimeEngine.Context()
             if !englishMode, !context.preedit.isEmpty, let index = context.candidates.firstIndex(of: text) {

@@ -204,6 +204,12 @@ import AsideOffline
         for char in "nihao" { try await send(String(char), window: window) }
         try await HostSnapshot.clickCandidate(host: window, firstCell: true)
         try await Task.sleep(nanoseconds: 300_000_000)
+        print("After Pinyin single click:", editor.string, "marked:", editor.hasMarkedText())
+        if editor.hasMarkedText() {
+            try await HostSnapshot.clickCandidate(host: window, firstCell: true, clicks: 2)
+            try await Task.sleep(nanoseconds: 300_000_000)
+            print("After Pinyin double click:", editor.string, "marked:", editor.hasMarkedText())
+        }
         guard editor.string == "你好你好", !editor.hasMarkedText() else { throw Failure.liveChinese }
         print("Mouse-selected a real native Pinyin candidate into the host.")
         try await send("\u{8}", window: window)

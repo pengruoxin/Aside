@@ -4,7 +4,7 @@ import AsideCore
 
 /// CI-only: capture the fixture and visible IME windows, excluding other apps.
 @MainActor enum HostSnapshot {
-    static func clickCandidate(host: NSWindow, firstCell: Bool = false) async throws {
+    static func clickCandidate(host: NSWindow, firstCell: Bool = false, clicks: Int = 1) async throws {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let candidate = content.windows.first(where: { window in
             let owner = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
@@ -24,15 +24,17 @@ import AsideCore
         move.post(tap: .cghidEventTap)
         try await Task.sleep(nanoseconds: 150_000_000)
         print("Pointer after candidate move:", CGEvent(source: nil)?.location as Any)
-        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+        for click in 1...clicks {
+          for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)!
             print("Candidate mouse inherited flags:", event.flags.rawValue)
             event.flags = []
-            event.setIntegerValueField(.mouseEventClickState, value: 1)
+            event.setIntegerValueField(.mouseEventClickState, value: Int64(click))
             // Mouse events need WindowServer hit testing; the nonactivating
             // candidate panel has no key window for PID-only event delivery.
             event.post(tap: .cghidEventTap)
             try await Task.sleep(nanoseconds: 60_000_000)
+          }
         }
     }
 
