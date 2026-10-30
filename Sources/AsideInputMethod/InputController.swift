@@ -81,10 +81,28 @@ import AsideOffline
         MainActor.assumeIsolated { commitOriginal() }
     }
 
+    override func setValue(_ value: Any!, forTag tag: Int, client sender: Any!) {
+        super.setValue(value, forTag: tag, client: sender)
+        MainActor.assumeIsolated {
+            guard tag == Int(kTextServiceInputModePropertyTag), let identifier = value as? String,
+                  identifier.hasPrefix("io.github.pengruoxin.inputmethod.Aside.") else { return }
+            if !modeID.isEmpty, identifier != modeID { commitOriginal() }
+            modeID = identifier
+            englishMode = identifier.hasSuffix(".English")
+            imeDiagnostic(englishMode ? "mode callback English" : "mode callback Chinese")
+        }
+    }
+
     @MainActor private func updateMode() {
-        if let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+        // The session's IMK property is authoritative. Global TIS state can
+        // still describe the previous application during a focus transition.
+        if let local = value(forTag: Int(kTextServiceInputModePropertyTag), client: target) as? String,
+           local.hasPrefix("io.github.pengruoxin.inputmethod.Aside.") {
+            modeID = local
+        } else if modeID.isEmpty, let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
            let pointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) {
-            modeID = unsafeBitCast(pointer, to: CFString.self) as String
+            let identifier = unsafeBitCast(pointer, to: CFString.self) as String
+            if identifier.hasPrefix("io.github.pengruoxin.inputmethod.Aside.") { modeID = identifier }
         }
         englishMode = modeID.hasSuffix(".English")
     }

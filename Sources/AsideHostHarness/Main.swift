@@ -489,9 +489,9 @@ import AsideOffline
             try await selectMode(".English")
             _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('\(field)');window.asideProbeField.focus()")
             try await clickWebField(web, window: window)
-            let activation = chineseActivations()
+            let activation = clientActivations()
             try await selectMode(".Chinese")
-            try await waitForChineseActivation(after: activation)
+            try await waitForClientActivation(after: activation)
             for character in "nihao " { try await send(String(character), window: window) }
             let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String
             print("WebKit field", field, "value:", value ?? "nil", "focused:", try await web.evaluateJavaScript("document.activeElement.id"), "source:", web.inputContext?.selectedKeyboardInputSource ?? "nil")
@@ -525,9 +525,9 @@ import AsideOffline
         try await selectMode(".English")
         _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('a');asideProbeField.focus()")
         try await clickWebField(web, window: window)
-        let activation = chineseActivations()
+        let activation = clientActivations()
         try await selectMode(".Chinese")
-        try await waitForChineseActivation(after: activation)
+        try await waitForClientActivation(after: activation)
         for character in "nihao " { try await send(String(character), window: window) }
         guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.offlinePreview }
         func count(_ marker: String) -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: marker).count }
@@ -548,13 +548,13 @@ import AsideOffline
         guard values == ["你好", "你好"] else { throw Failure.hostSelectionChanged }
         print("Identical text/caret in two WebKit fields did not authorize applying the old field's English preview.")
     }
-    private static func chineseActivations() -> Int {
+    private static func clientActivations() -> Int {
         guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { return 0 }
-        return ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "activated Chinese").count
+        return ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "activateServer called; text client: true").count
     }
-    @MainActor private static func waitForChineseActivation(after count: Int) async throws {
+    @MainActor private static func waitForClientActivation(after count: Int) async throws {
         for _ in 0..<100 {
-            if chineseActivations() > count { return }
+            if clientActivations() > count { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         throw Failure.registration
