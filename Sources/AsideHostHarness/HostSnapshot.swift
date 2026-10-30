@@ -4,17 +4,17 @@ import AsideCore
 
 /// CI-only: capture the fixture and visible IME windows, excluding other apps.
 @MainActor enum HostSnapshot {
-    static func clickCandidate(host: NSWindow) async throws {
+    static func clickCandidate(host: NSWindow, firstCell: Bool = false) async throws {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let candidate = content.windows.first(where: { window in
             let owner = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
             return window.windowID != CGWindowID(host.windowNumber) && window.frame.height < 180
-                && window.frame.height > 18 && window.frame.width > 50
+                && window.frame.height > 18 && window.frame.width > 8
                 && (owner == InputSourcePreferences.bundleID.lowercased() || owner.contains("inputmethodkit"))
         }), let owner = candidate.owningApplication else {
             throw NSError(domain: "Aside.CandidateFixture", code: 1)
         }
-        let point = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
+        let point = CGPoint(x: firstCell ? candidate.frame.minX + 25 : candidate.frame.midX, y: candidate.frame.midY)
         print("Clicking native candidate window:", candidate.windowID, owner.bundleIdentifier, candidate.frame)
         if let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, candidate.windowID) as? [[String: Any]] {
             print("Candidate Quartz bounds:", info.first?[kCGWindowBounds as String] as Any)

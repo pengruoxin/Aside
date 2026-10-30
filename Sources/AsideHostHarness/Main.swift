@@ -201,8 +201,11 @@ import AsideOffline
             guard trace.contains("translation requested") else { throw Failure.offlinePreview }
             print("Committed sentence remained available to the manual translation command.")
         }
-        for char in "nihao " { try await send(String(char), window: window) }
+        for char in "nihao" { try await send(String(char), window: window) }
+        try await HostSnapshot.clickCandidate(host: window, firstCell: true)
+        try await Task.sleep(nanoseconds: 300_000_000)
         guard editor.string == "你好你好", !editor.hasMarkedText() else { throw Failure.liveChinese }
+        print("Mouse-selected a real native Pinyin candidate into the host.")
         try await send("\u{8}", window: window)
         guard editor.string == "你好你" else { throw Failure.liveChinese }
         try await send("\u{8}", window: window)
