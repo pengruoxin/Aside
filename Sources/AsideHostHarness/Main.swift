@@ -253,19 +253,43 @@ import AsideOffline
             try baiduReport("UNAVAILABLE: runner could not load the real Baidu search field; no Baidu acceptance claim.")
             return
         }
-        try await selectMode(".Chinese")
-        try await Task.sleep(nanoseconds: 700_000_000)
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        // Establish a positive control in the SAME external page before Aside.
+        // Switching to a different source after focus also activates a fresh IMK session.
+        let appleQuery = [kTISPropertyInputSourceID as String: "com.apple.inputmethod.SCIM.ITABC"] as CFDictionary
+        let appleSources = TISCreateInputSourceList(appleQuery, true).takeRetainedValue() as! [TISInputSource]
+        guard let apple = appleSources.first else { throw Failure.systemControl }
         _ = try await web.evaluateJavaScript(focus)
         try await clickWebField(web, window: window)
-        web.inputContext?.activate()
-        web.inputContext?.selectedKeyboardInputSource = InputSourcePreferences.bundleID + ".Chinese"
-        try await selectMode(".Chinese")
+        guard TISSelectInputSource(apple) == noErr else { throw Failure.systemControl }
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        for character in "nihao " {
+            try await send(String(character), window: window)
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
         try await Task.sleep(nanoseconds: 500_000_000)
+        let appleValue = try await web.evaluateJavaScript("document.activeElement.value") as? String
+        print("Baidu initial Apple control value:", appleValue ?? "nil")
+        guard appleValue == "你好" else { throw Failure.systemControl }
+        try await send("\r", window: window)
+        for _ in 0..<50 {
+            if observer.searches > 0 { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        print("Baidu initial Apple control searches:", observer.searches)
+        guard observer.searches == 1 else { throw Failure.systemControl }
+        observer.searches = 0
+        _ = try await web.evaluateJavaScript(focus)
+        try await clickWebField(web, window: window)
+        try await selectMode(".Chinese")
+        try await Task.sleep(nanoseconds: 1_000_000_000)
         print("Baidu native focus:", NSApp.isActive, window.isKeyWindow, String(describing: window.firstResponder))
         _ = try await web.evaluateJavaScript("window.asideKeys=[];for(const name of ['keydown','keyup','compositionstart','compositionend'])document.addEventListener(name,e=>asideKeys.push([e.type,e.key,e.keyCode,e.isComposing]),true)")
         print("Baidu focused element:", try await web.evaluateJavaScript("document.activeElement.tagName+'#'+document.activeElement.id"))
-        for character in "nihao " { try await send(String(character), window: window) }
+        for character in "nihao " {
+            try await send(String(character), window: window)
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        try await Task.sleep(nanoseconds: 500_000_000)
         let value = try await web.evaluateJavaScript("document.activeElement.value") as? String
         print("Baidu fixture value:", value ?? "nil")
         print("Baidu event trace after typing:", try await web.evaluateJavaScript("JSON.stringify(window.asideKeys)"))
