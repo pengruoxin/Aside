@@ -604,8 +604,9 @@ import AsideOffline
             if clientActivations() > count { return }
             // An already active IMK session need not activate again. Confirm
             // the host's current source instead of requiring an extra callback.
-            if attempt >= 20, focusedInputContext()?.selectedKeyboardInputSource == InputSourcePreferences.bundleID + ".Chinese",
-               !NSRunningApplication.runningApplications(withBundleIdentifier: InputSourcePreferences.bundleID).isEmpty { return }
+            // macOS may launch an IME lazily on its first key. Requiring the
+            // process before delivering that key deadlocks a valid selection.
+            if attempt >= 20, focusedInputContext()?.selectedKeyboardInputSource == InputSourcePreferences.bundleID + ".Chinese" { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         print("Input context readiness:", NSApp.isActive, NSApp.keyWindow?.isKeyWindow as Any,
