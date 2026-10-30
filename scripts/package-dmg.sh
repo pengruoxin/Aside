@@ -1,29 +1,36 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-arch="$(uname -m)"
-version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' dist/Aside.app/Contents/Info.plist)"
+model="dist/安装句外.app/Contents/Resources/Aside.app/Contents/Resources/Models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+[[ -f "$model" ]] || { echo "Full offline model missing; refusing to label this as a complete offline installer."; exit 1; }
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-ditto dist/Aside.app "$stage/Aside.app"
-ln -s /Applications "$stage/Applications"
-cat > "$stage/安装说明.txt" <<'EOF'
-句外 Aside
+ditto "dist/安装句外.app" "$stage/安装句外.app"
+cat > "$stage/安装与使用.txt" <<'EOF'
+句外输入法 0.3.0 · 完整离线测试版
 
-将 Aside 拖入 Applications，然后从 Applications 打开。
-菜单栏出现“句外”表示应用已运行。
+1. 打开“安装句外.app”，点击安装句外输入法。
+2. 安装到当前用户 ~/Library/Input Methods/Aside.app。
+3. 从系统输入源菜单选择“句外拼音”或“句外英文”。
+4. 若未出现，请先保存工作，退出登录后重新登录，再在键盘设置添加句外。
 
-首次运行需在设置选择本机 Ollama 或配置自己的 HTTPS 云端服务。
-应用不包含免费模型、服务账号或 API Key。
+本包含拼音引擎、推理引擎和约1.1GB语言模型。
+下载安装完成后可断网使用，无API Key、Ollama或云端服务。
 
-此预览版暂未获得 Apple Developer ID 签名与公证。
-若系统阻止打开，请核对 GitHub 官方发布来源，然后在系统设置
-“隐私与安全性”中使用“仍要打开”。无需关闭系统安全保护。
+空格/数字选词；Control–Option–T 翻译或改写当前句子。
+Return 先确认拼音，再交给搜索框/聊天框的正常操作。
+学习模式双击英文候选看讲解；英文输出模式可Tab或双击候选采用英文。
+不会把英文提示自动混进搜索或消息正文。
 
-中文继续用苹果拼音，英文继续用 ABC；句外不改输入源切换设置。
-跨应用可选中文字，从原应用“服务”菜单选择“使用句外处理”。
-原生句外编辑区支持框内浅灰英文；第三方应用不保证支持。
+请注意：当前采用原生候选区展示英文，不是通用框内灰字。
+百度浏览器与已登录微信的真实交互仍需实机验收。
+当前针对Apple Silicon、macOS26+，优先适配M5 16GB MacBook Air。
+
+预览版无 Apple Developer ID 签名和公证。
+核实来自本项目后，若系统阻止打开，可在“隐私与安全性”中确认。
+不要关闭系统安全保护。
 EOF
-hdiutil create -volname "句外 Aside" -srcfolder "$stage" -ov -format UDZO "dist/Aside-$version-$arch.dmg"
-hdiutil verify "dist/Aside-$version-$arch.dmg"
-shasum -a 256 "dist/Aside-$version-$arch.dmg" > "dist/Aside-$version-$arch.dmg.sha256"
+name="Aside-0.3.0-arm64-offline.dmg"
+hdiutil create -volname "句外离线输入法" -srcfolder "$stage" -ov -format UDZO "dist/$name"
+hdiutil verify "dist/$name"
+(cd dist && shasum -a 256 "$name") > "dist/$name.sha256"

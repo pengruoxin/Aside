@@ -1,33 +1,31 @@
-# 验证记录 · 2026-10-27
+# 0.3 输入法验证记录
 
-开发环境：Windows。原生测试通过 GitHub Actions 在真实 macOS runner 中执行。
+目标：13 英寸 MacBook Air、M5、16GB、macOS 26.5.1。开发主机为 Windows；自动验证运行在 GitHub Actions 的 macOS 26 ARM64 主机。
 
-## 已获得的运行结果
+## 已有证据
 
-- [初版双架构构建](https://github.com/pengruoxin/Aside/actions/runs/40467251567)：Swift 测试和 release 编译通过。
-- [原生界面与 DMG 构建](https://github.com/pengruoxin/Aside/actions/runs/40468132288)：Apple Silicon / Intel 均通过 10 个测试、原生启动、NSTextView 编辑撤销、图标生成、签名校验、DMG 校验。
-- [服务协议与界面修正](https://github.com/pengruoxin/Aside/actions/runs/40468640682)：两种架构各 14 个测试通过，生成实际原生截图和 DMG。网络测试使用 URLProtocol 模拟，不调用真实付费服务。
+- [40989619234](https://github.com/pengruoxin/Aside/actions/runs/40989619234)：最新系统模式回调、词语确认、退格、手动整句处理、不可回读客户端和 WebKit 搜索/聊天输入回归通过。两种模式使用独立“中 / A”图标。真实百度页中苹果拼音已能输入“你好”，但未观察到 Return 搜索，因此该页仍记录 UNAVAILABLE。
 
-- [v0.2.0 发布验证](https://github.com/pengruoxin/Aside/actions/runs/40469762051)：Apple Silicon / Intel 各 15 个测试零失败，原生启动、编辑撤销、DMG 校验及 Release 发布全部通过。
-- 已从公开 Release 下载两份 DMG，并核对 SHA-256 与发布的校验文件一致。
-- [安装包下载](https://github.com/pengruoxin/Aside/releases/tag/v0.2.0)。
+- [40986774181](https://github.com/pengruoxin/Aside/actions/runs/40986774181)：词语立即提交的新流程基础回归通过；核心测试、连续选词、确认后无 marked text、退格、手动整句处理、两个模式和标准 WebKit 搜索/聊天提交。百度的同页苹果拼音对照未通过，记录 UNAVAILABLE，不代表百度通过。
 
-## 审阅后处理
+- 核心测试通过：整句累积、提示与正文隔离、异步版本失效、原文提交、明确采用英文、安装暂存验证与失败回滚。
+- 实际 librime 引擎产生“你好”候选并正确提交。
+- 标准 NSTextView 与 WebKit 搜索框、文本框的组合文本测试通过，英文提示没有混入正文。
+- 完整包所用模型哈希核对通过；CI 实际执行中文翻译、英文改写并返回中文讲解。仅证明推理路径可用，不证明学术风格或翻译质量达标。
+- [40845457731](https://github.com/pengruoxin/Aside/actions/runs/40845457731)：两个系统模式注册、启用、切换、冷启动及真实 IMK 按键输入通过，Return 提交一次。
+- [40847152356](https://github.com/pengruoxin/Aside/actions/runs/40847152356)：实际中文翻译、英文改写、中文讲解、模型 SHA-256、签名完整性与 DMG 校验通过；该历史包未发布。
+- [40848255418](https://github.com/pengruoxin/Aside/actions/runs/40848255418)：执行安装器的真实安装流程并校对运行包位置；标准搜索和聊天输入框 Return 各一次。
+- [40850143052](https://github.com/pengruoxin/Aside/actions/runs/40850143052)：IMK 内离线生成期间正文不变，Tab 采用英文、Return 一次；该轮最终因百度实际页面检查失败，整体未通过。
 
-- 去掉不恰当的 Services 内容类型限制。
-- NSTextView 明确报告组合状态，不再只依赖 SwiftUI 字符串变化。
-- 程序替换走原生编辑和撤销流程，之后重算高度。
-- 区分手动选区与自动检测，避免自动读取失败清掉手动结果。
-- 长译文在菜单栏和主窗口均可滚动。
-- 云端 HTTPS 地址校验，拒绝 URL 内密钥 / 查询参数，禁止重定向转发。
-- Keychain 按服务地址隔离；云端发送需本次明确同意。
+上述历史记录不能替代最新提交的回归检查。最新改动将确认词语立即写入宿主，只保留未确认拼音的 marked text；Tab 替换需核对原文、光标与 UTF-16 范围，并保留两侧空白。正在重新验证，全部通过前不发布新版安装包。
 
-## 仍需真实用户 Mac 验收
+## 发布前仍需通过
 
-- 苹果拼音候选与上屏的完整交互、系统服务注册及快捷键。
-- 备忘录 / 文本编辑的 AX 自动检测，浏览器和聊天工具的手动服务。
-- macOS 13 / 14 以及其他版本的实际运行；当前 CI 为 macOS 15。
-- 真实模型翻译质量、服务商兼容性、性能和资源占用。
-- Developer ID 签名、公证和 Gatekeeper 的公开分发体验。
+- 最新词语提交行为、连续选词、退格、离线候选讲解及显式英文替换。
+- 最新完整离线模型打包、安装器签名检查、DMG 校验。
+- 在目标 Mac 安装、首次加载、断网、睡眠唤醒与升级检查。
+- 百度搜索框：拼音候选、无句号手动翻译、Return 搜索，不混入英文提示。
+- 已登录微信：中文长句、英文改写、Return 发送一次、切换聊天对象、焦点变化、Esc、Tab、复制粘贴和撤销。
+- 地球键、Control–空格、Caps Lock 遵循本机系统设置，保留苹果拼音 / ABC。
 
-CI 的原生启动与编辑撤销检查不证明全应用兼容；当前发布为可安装预览版。
+实际百度页面已加入 WebKit 在线检查，输入和提交存在不稳定表现，正在使用同页苹果拼音作对照定位；标准控件测试不等于百度已通过。页面不可访问时记录 UNAVAILABLE，不能算通过。微信、目标 M5 设备速度和长时间体验尚无实机记录，也没有 Apple Developer ID 公证。0.2 编辑器版本的成功构建不算 0.3 输入法验证结果。

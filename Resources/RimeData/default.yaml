@@ -1,0 +1,7 @@
+config_version: "0.3"
+schema_list:
+  - schema: aside_pinyin
+menu:
+  page_size: 7
+switcher:
+  hotkeys: []
