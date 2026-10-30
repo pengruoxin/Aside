@@ -19,7 +19,7 @@ func imeDiagnostic(_ message: String) {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] != nil {
             diagnosticMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { event in
-                imeDiagnostic("local candidate mouse event: \(event.type.rawValue); window: \(event.windowNumber)")
+                imeDiagnostic("local candidate mouse event: \(event.type.rawValue); window: \(event.windowNumber); flags: \(event.modifierFlags.rawValue)")
                 return event
             }
         }

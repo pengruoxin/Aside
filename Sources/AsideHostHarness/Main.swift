@@ -381,10 +381,13 @@ import AsideOffline
         let local = NSPoint(x: point[0], y: web.isFlipped ? point[1] : web.bounds.height - point[1])
         let screen = window.convertPoint(toScreen: web.convert(local, to: nil))
         let location = CGPoint(x: screen.x, y: (NSScreen.screens.first?.frame.maxY ?? 0) - screen.y)
-        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: location, mouseButton: .left)?.post(tap: .cghidEventTap)
+        let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: location, mouseButton: .left)!
+        move.flags = []
+        move.post(tap: .cghidEventTap)
         try await Task.sleep(nanoseconds: 150_000_000)
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: location, mouseButton: .left)!
+            event.flags = []
             event.setIntegerValueField(.mouseEventClickState, value: 1)
             event.post(tap: .cghidEventTap)
             try await Task.sleep(nanoseconds: 60_000_000)
@@ -591,7 +594,7 @@ import AsideOffline
         let code = codes[text.lowercased()] ?? 0
         for down in [true, false] {
             let hardware = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)!
-            hardware.flags = modifiers.union(uppercase ? .maskShift : [])
+            hardware.flags = down ? modifiers.union(uppercase ? .maskShift : []) : []
             // Unicode text injection bypasses IMEs. Exercise physical keycodes.
             hardware.postToPid(getpid())
         }

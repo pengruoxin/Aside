@@ -16,11 +16,18 @@ import AsideCore
         }
         let point = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
         print("Clicking native candidate window:", candidate.windowID, owner.bundleIdentifier, candidate.frame)
-        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+        if let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, candidate.windowID) as? [[String: Any]] {
+            print("Candidate Quartz bounds:", info.first?[kCGWindowBounds as String] as Any)
+        }
+        let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)!
+        move.flags = []
+        move.post(tap: .cghidEventTap)
         try await Task.sleep(nanoseconds: 150_000_000)
         print("Pointer after candidate move:", CGEvent(source: nil)?.location as Any)
         for type in [CGEventType.leftMouseDown, .leftMouseUp] {
             let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)!
+            print("Candidate mouse inherited flags:", event.flags.rawValue)
+            event.flags = []
             event.setIntegerValueField(.mouseEventClickState, value: 1)
             // Mouse events need WindowServer hit testing; the nonactivating
             // candidate panel has no key window for PID-only event delivery.
@@ -49,7 +56,7 @@ import AsideCore
                                           width: rectangle.width, height: rectangle.height)
         configuration.width = Int(rectangle.width)
         configuration.height = Int(rectangle.height)
-        configuration.showsCursor = false
+        configuration.showsCursor = name == "learning-click-result"
         let bitmap = try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(display: display, including: windows), configuration: configuration)
         guard let png = NSBitmapImageRep(cgImage: bitmap).representation(using: .png, properties: [:]) else { return }
         try png.write(to: URL(fileURLWithPath: output).appendingPathComponent(name + ".png"), options: Data.WritingOptions.atomic)
