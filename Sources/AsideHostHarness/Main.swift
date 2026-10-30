@@ -233,6 +233,7 @@ import AsideOffline
         window.close()
         if !CommandLine.arguments.contains("--offline-input") { try await opaqueInput() }
         try await liveWebInput()
+        if CommandLine.arguments.contains("--offline-input") { try await webFocusIsolation() }
         try await liveBaidu()
     }
 
@@ -486,10 +487,12 @@ import AsideOffline
             try await selectMode(".English")
             _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('\(field)');window.asideProbeField.focus()")
             try await clickWebField(web, window: window)
+            let activation = chineseActivations()
             try await selectMode(".Chinese")
-            try await Task.sleep(nanoseconds: 500_000_000)
+            try await waitForChineseActivation(after: activation)
             for character in "nihao " { try await send(String(character), window: window) }
             let value = try await web.evaluateJavaScript("document.getElementById('\(field)').value") as? String
+            print("WebKit field", field, "value:", value ?? "nil", "focused:", try await web.evaluateJavaScript("document.activeElement.id"), "source:", web.inputContext?.selectedKeyboardInputSource ?? "nil")
             guard value == "你好" else { throw Failure.liveWebInput }
             try await send("\r", window: window)
             try await Task.sleep(nanoseconds: 200_000_000)
@@ -497,6 +500,62 @@ import AsideOffline
         let sent = try await web.evaluateJavaScript("window.sent") as? [[String]]
         guard sent == [["search", "你好"], ["chat", "你好"]] else { throw Failure.returnWasNotForwarded }
         print("Real IMK keycodes in WebKit search/chat controls passed; Return submitted each field exactly once.")
+    }
+
+    @MainActor private static func webFocusIsolation() async throws {
+        let settings = OfflineConfiguration.shared
+        let old = (settings.automatic, settings.englishOutput, settings.paused, settings.style)
+        settings.automatic = false; settings.englishOutput = true; settings.paused = false; settings.style = .casual
+        defer { settings.automatic = old.0; settings.englishOutput = old.1; settings.paused = old.2; settings.style = old.3 }
+        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 650, height: 300))
+        let window = NSWindow(contentRect: web.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = web
+        window.title = "句外输入法 · 相同文字换框验证"
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { window.close() }
+        web.loadHTMLString("<html><body><input id='a'><p><input id='b' value='你好'></p></body></html>", baseURL: nil)
+        for _ in 0..<80 {
+            if (try? await web.evaluateJavaScript("document.getElementById('b')!==null")) as? Bool == true { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        try await selectMode(".English")
+        _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('a');asideProbeField.focus()")
+        try await clickWebField(web, window: window)
+        let activation = chineseActivations()
+        try await selectMode(".Chinese")
+        try await waitForChineseActivation(after: activation)
+        for character in "nihao " { try await send(String(character), window: window) }
+        guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.offlinePreview }
+        func count(_ marker: String) -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: marker).count }
+        let before = count("preview ready"), errors = count("translation failed:")
+        try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
+        let deadline = ProcessInfo.processInfo.systemUptime + 240
+        while count("preview ready") == before, ProcessInfo.processInfo.systemUptime < deadline {
+            guard count("translation failed:") == errors else { throw Failure.offlinePreview }
+            try await Task.sleep(nanoseconds: 250_000_000)
+        }
+        guard count("preview ready") > before else { throw Failure.offlinePreview }
+        _ = try await web.evaluateJavaScript("window.asideProbeField=document.getElementById('b');asideProbeField.focus();asideProbeField.setSelectionRange(2,2)")
+        try await clickWebField(web, window: window)
+        let matchedCaret = try await web.evaluateJavaScript("document.activeElement.id==='b'&&document.activeElement.selectionStart===2&&document.activeElement.selectionEnd===2") as? Bool
+        guard matchedCaret == true else { throw Failure.hostSelectionChanged }
+        try await send("\t", window: window)
+        let values = try await web.evaluateJavaScript("[document.getElementById('a').value,document.getElementById('b').value]") as? [String]
+        guard values == ["你好", "你好"] else { throw Failure.hostSelectionChanged }
+        print("Identical text/caret in two WebKit fields did not authorize applying the old field's English preview.")
+    }
+    private static func chineseActivations() -> Int {
+        guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { return 0 }
+        return ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "activated Chinese").count
+    }
+    @MainActor private static func waitForChineseActivation(after count: Int) async throws {
+        for _ in 0..<100 {
+            if chineseActivations() > count { return }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        throw Failure.registration
     }
     @MainActor private static func selectMode(_ suffix: String) async throws {
         let query = [kTISPropertyBundleID as String: "io.github.pengruoxin.inputmethod.Aside"] as CFDictionary

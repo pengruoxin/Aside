@@ -33,7 +33,7 @@ import AsideOffline
 
     override func recognizedEvents(_ sender: Any!) -> Int {
         imeDiagnostic("recognizedEvents queried")
-        return Int(NSEvent.EventTypeMask.keyDown.rawValue)
+        return Int(NSEvent.EventTypeMask.keyDown.union(.leftMouseDown).union(.rightMouseDown).rawValue)
     }
 
     override func activateServer(_ sender: Any!) {
@@ -55,6 +55,7 @@ import AsideOffline
             if rime == nil { rime = RimeEngine() }
             rime?.clear()
             updateMode()
+            imeDiagnostic(englishMode ? "activated English" : "activated Chinese")
             if preferencesObserver == nil {
                 _ = OfflineConfiguration.shared
                 preferencesObserver = DistributedNotificationCenter.default().addObserver(forName: OfflineConfiguration.notification, object: nil, queue: .main) { [weak self] _ in
@@ -94,6 +95,10 @@ import AsideOffline
     @MainActor private func process(_ event: NSEvent?, sender: Any?) -> Bool {
         imeDiagnostic("handle event; active: \(active); text client: \(sender is IMKTextInput)")
         guard let event, active, let client = sender as? IMKTextInput else { return false }
+        if event.type == .leftMouseDown || event.type == .rightMouseDown {
+            commitOriginal()
+            return false
+        }
         if let target, (target as AnyObject) !== (client as AnyObject) {
             commitOriginal()
             composition.reset()
