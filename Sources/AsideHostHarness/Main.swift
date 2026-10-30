@@ -231,8 +231,42 @@ import AsideOffline
             try await offlineInput(editor: editor, window: window, delegate: delegate)
         }
         window.close()
+        if !CommandLine.arguments.contains("--offline-input") { try await opaqueInput() }
         try await liveWebInput()
         try await liveBaidu()
+    }
+
+    /// Simulates apps that allow typing but withhold confirmed document text.
+    @MainActor private static func opaqueInput() async throws {
+        let editor = OpaqueTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 100))
+        let window = NSWindow(contentRect: editor.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = editor
+        let delegate = SendDelegate()
+        editor.delegate = delegate
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(editor)
+        NSApp.activate(ignoringOtherApps: true)
+        let settings = OfflineConfiguration.shared
+        let automatic = settings.automatic
+        settings.automatic = false
+        defer { settings.automatic = automatic; window.close() }
+        try await selectMode(".English")
+        try await Task.sleep(nanoseconds: 700_000_000)
+        for character in "Hello." { try await send(String(character), window: window) }
+        guard let path = ProcessInfo.processInfo.environment["ASIDE_IMK_DIAGNOSTICS_PATH"] else { throw Failure.offlinePreview }
+        func requests() -> Int { ((try? String(contentsOfFile: path)) ?? "").components(separatedBy: "translation requested").count }
+        let before = requests()
+        try await send("t", window: window, modifiers: [.maskControl, .maskAlternate])
+        try await Task.sleep(nanoseconds: 300_000_000)
+        guard requests() == before + 1, editor.string == "Hello.", !editor.hasMarkedText() else { throw Failure.offlinePreview }
+        try await send("\r", window: window)
+        guard delegate.submissions == ["Hello."] else { throw Failure.returnWasNotForwarded }
+        print("Opaque document client retained the sentence for learning; Return submitted the original once.")
+    }
+
+    @MainActor private final class OpaqueTextView: NSTextView {
+        override func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? { nil }
     }
 
     @MainActor private static func liveBaidu() async throws {

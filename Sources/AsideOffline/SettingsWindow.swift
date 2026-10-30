@@ -49,7 +49,7 @@ public struct OfflineSettingsView: View {
                 }.pickerStyle(.segmented)
                 Toggle("写完一句自动给出英文候选", isOn: $settings.automatic)
                 Toggle("暂停学习提示（打字仍可用）", isOn: $settings.paused)
-                Text("无标点时按 Control–Option–T 主动处理。学习模式点击英文候选看讲解；英文输出模式按 Tab 或点候选采用英文。Return 不会自动采用英文。")
+                Text("无标点时按 Control–Option–T 主动处理。学习模式点英文候选看讲解；英文输出模式用 Tab 或点候选采用。有些应用仅支持学习提示。Return 不会自动采用英文。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("完全本机处理") {

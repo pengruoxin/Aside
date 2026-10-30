@@ -16,6 +16,7 @@ import AsideOffline
     private var sourceStart: Int?
     private var markedStart: Int?
     private var documentID: String?
+    private var canInspectSource = false
     private var preferencesObserver: NSObjectProtocol?
     deinit {
         generation?.cancel()
@@ -41,6 +42,7 @@ import AsideOffline
             sourceStart = nil
             markedStart = nil
             documentID = nil
+            canInspectSource = false
             hasMarkedText = false
             target = sender as? IMKTextInput
             active = true
@@ -92,7 +94,7 @@ import AsideOffline
         }
         target = client
         if rime?.context.preedit.isEmpty ?? true,
-           !composition.source.isEmpty, ownedRange() == nil {
+           !composition.source.isEmpty, canInspectSource, ownedRange() == nil {
             forgetSentence()
         }
         let oldMode = englishMode
@@ -126,8 +128,10 @@ import AsideOffline
         }
         if event.keyCode == 48, !flags.contains(.shift), !composingPinyin, composition.preview != nil,
            OfflineConfiguration.shared.englishOutput {
-            adoptEnglish()
-            return true
+            if ownedRange() != nil { adoptEnglish(); return true }
+            forgetSentence()
+            OfflineConfiguration.shared.status = "当前输入框仅支持学习提示，已保留原文并将 Tab 交还应用。"
+            return false
         }
         if event.keyCode == 48, composingPinyin {
             if let rime, rime.process(0xff09) { consumeCommit() }
@@ -217,7 +221,8 @@ import AsideOffline
     }
     @MainActor private func appendConfirmed(_ text: String) {
         guard let target else { return }
-        if composition.source.isEmpty {
+        let startsSentence = composition.source.isEmpty
+        if startsSentence {
             let start = markedStart ?? target.selectedRange().location
             sourceStart = start == NSNotFound ? nil : start
             documentID = target.uniqueClientIdentifierString()
@@ -226,6 +231,9 @@ import AsideOffline
         hasMarkedText = false
         markedStart = nil
         composition.append(text)
+        // Some clients expose typing but no document readback. They can still
+        // learn from this session's typed text; replacement stays fail-closed.
+        if startsSentence { canInspectSource = ownedRange() != nil }
         if composition.source.count > 600 {
             forgetSentence()
             OfflineConfiguration.shared.status = "本段较长，已保留原文；请从新句子继续学习。"
@@ -236,6 +244,7 @@ import AsideOffline
         composition.reset()
         sourceStart = nil
         documentID = nil
+        canInspectSource = false
         panel?.hide()
     }
     @MainActor private func ownedRange() -> NSRange? {
@@ -331,9 +340,10 @@ import AsideOffline
                 try Task.checkCancellation()
                 guard let self, self.active, self.composition.acceptPreview(result, revision: token) else { return }
                 // An asynchronous result must never write into the host field.
-                guard self.ownedRange() != nil else { self.forgetSentence(); return }
+                guard !self.canInspectSource || self.ownedRange() != nil else { self.forgetSentence(); return }
                 imeDiagnostic("preview ready")
-                settings.status = settings.englishOutput ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
+                settings.status = settings.englishOutput && self.ownedRange() != nil
+                    ? "英文已就绪 · Tab 采用；Return 保留原文" : "英文已就绪 · 点击英文候选看讲解"
                 self.refreshCandidates()
             } catch {
                 imeDiagnostic("translation task ended: \(error.localizedDescription)")
@@ -361,7 +371,7 @@ import AsideOffline
                 consumeCommit()
                 refresh()
             } else if composition.preview?.expression == candidateString.string {
-                if OfflineConfiguration.shared.englishOutput { adoptEnglish() }
+                if OfflineConfiguration.shared.englishOutput, ownedRange() != nil { adoptEnglish() }
                 else if let preview = composition.preview {
                     panel?.update()
                     panel?.show(kIMKLocateCandidatesBelowHint)
